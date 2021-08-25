@@ -4,6 +4,7 @@ mod registry;
 use crate::util::*;
 use gimli::{BaseAddresses, EhFrame, FrameDescriptionEntry};
 
+#[derive(Debug)]
 pub struct FDESearchResult {
     pub fde: FrameDescriptionEntry<StaticSlice>,
     pub bases: BaseAddresses,

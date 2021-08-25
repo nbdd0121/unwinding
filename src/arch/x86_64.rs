@@ -11,6 +11,13 @@ pub struct Context {
     pub fcw: usize,
 }
 
+pub struct Arch;
+
+impl Arch {
+    pub const SP: Register = X86_64::RSP;
+    pub const RA: Register = X86_64::RA;
+}
+
 impl fmt::Debug for Context {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut fmt = fmt.debug_struct("Context");
@@ -84,7 +91,6 @@ pub extern "C-unwind" fn save_context() -> Context {
 
 #[naked]
 pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
-    // No need to save caller-saved registers here.
     asm!(
         "
         /* Restore stack */

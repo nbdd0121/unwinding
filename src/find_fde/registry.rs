@@ -1,0 +1,205 @@
+use super::FDESearchResult;
+use crate::util::get_unlimited_slice;
+use core::mem::MaybeUninit;
+use core::ptr;
+use gimli::{BaseAddresses, EhFrame, NativeEndian, UnwindSection};
+use libc::c_void;
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
+enum Table {
+    Single(*const c_void),
+    Multiple(*const *const c_void),
+}
+
+struct Object {
+    next: *mut Object,
+    tbase: usize,
+    dbase: usize,
+    table: Table,
+}
+
+struct RegistryInner {
+    object: *mut Object,
+}
+
+unsafe impl Send for RegistryInner {}
+
+pub struct Registry {
+    inner: Mutex<RegistryInner>,
+}
+
+pub fn get_finder() -> &'static Registry {
+    static LAZY: Lazy<Registry> = Lazy::new(|| Registry {
+        inner: Mutex::new(RegistryInner {
+            object: ptr::null_mut(),
+        }),
+    });
+    &*LAZY
+}
+
+impl super::FDEFinder for Registry {
+    fn find_fde(&self, pc: usize) -> Option<FDESearchResult> {
+        let guard = get_finder().inner.lock().unwrap();
+        let mut cur = guard.object;
+
+        unsafe {
+            while !cur.is_null() {
+                let bases = BaseAddresses::default()
+                    .set_text((*cur).tbase as _)
+                    .set_got((*cur).dbase as _);
+                match (*cur).table {
+                    Table::Single(addr) => {
+                        let eh_frame = EhFrame::new(get_unlimited_slice(addr as _), NativeEndian);
+                        let bases = bases.clone().set_eh_frame(addr as usize as _);
+                        if let Ok(fde) =
+                            eh_frame.fde_for_address(&bases, pc as _, EhFrame::cie_from_offset)
+                        {
+                            return Some(FDESearchResult {
+                                fde,
+                                bases,
+                                eh_frame,
+                            });
+                        }
+                    }
+                    Table::Multiple(mut addrs) => {
+                        let mut addr = *addrs;
+                        while !addr.is_null() {
+                            let eh_frame =
+                                EhFrame::new(get_unlimited_slice(addr as _), NativeEndian);
+                            let bases = bases.clone().set_eh_frame(addr as usize as _);
+                            if let Ok(fde) =
+                                eh_frame.fde_for_address(&bases, pc as _, EhFrame::cie_from_offset)
+                            {
+                                return Some(FDESearchResult {
+                                    fde,
+                                    bases,
+                                    eh_frame,
+                                });
+                            }
+
+                            addrs = addrs.add(1);
+                            addr = *addrs;
+                        }
+                    }
+                }
+
+                cur = (*cur).next;
+            }
+        }
+
+        None
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn __register_frame_info_bases(
+    begin: *const c_void,
+    ob: *mut Object,
+    tbase: *const c_void,
+    dbase: *const c_void,
+) {
+    if begin.is_null() {
+        return;
+    }
+
+    ob.write(Object {
+        next: core::ptr::null_mut(),
+        tbase: tbase as _,
+        dbase: dbase as _,
+        table: Table::Single(begin),
+    });
+
+    let mut guard = get_finder().inner.lock().unwrap();
+    (*ob).next = guard.object;
+    guard.object = ob;
+}
+
+#[no_mangle]
+unsafe extern "C" fn __register_frame_info(begin: *const c_void, ob: *mut Object) {
+    __register_frame_info_bases(begin, ob, core::ptr::null_mut(), core::ptr::null_mut());
+}
+
+#[no_mangle]
+unsafe extern "C" fn __register_frame(begin: *const c_void) {
+    if begin.is_null() {
+        return;
+    }
+
+    let storage = Box::into_raw(Box::new(MaybeUninit::<Object>::uninit())) as *mut Object;
+    __register_frame_info(begin, storage);
+}
+
+#[no_mangle]
+unsafe extern "C" fn __register_frame_info_table_bases(
+    begin: *const c_void,
+    ob: *mut Object,
+    tbase: *const c_void,
+    dbase: *const c_void,
+) {
+    ob.write(Object {
+        next: core::ptr::null_mut(),
+        tbase: tbase as _,
+        dbase: dbase as _,
+        table: Table::Multiple(begin as _),
+    });
+
+    let mut guard = get_finder().inner.lock().unwrap();
+    (*ob).next = guard.object;
+    guard.object = ob;
+}
+
+#[no_mangle]
+unsafe extern "C" fn __register_frame_info_table(begin: *const c_void, ob: *mut Object) {
+    __register_frame_info_table_bases(begin, ob, core::ptr::null_mut(), core::ptr::null_mut());
+}
+
+#[no_mangle]
+unsafe extern "C" fn __register_frame_table(begin: *const c_void) {
+    if begin.is_null() {
+        return;
+    }
+
+    let storage = Box::into_raw(Box::new(MaybeUninit::<Object>::uninit())) as *mut Object;
+    __register_frame_info_table(begin, storage);
+}
+
+#[no_mangle]
+unsafe extern "C" fn __deregister_frame_info_bases(begin: *const c_void) -> *mut Object {
+    if begin.is_null() {
+        return core::ptr::null_mut();
+    }
+
+    let mut guard = get_finder().inner.lock().unwrap();
+    let mut prev = &mut guard.object;
+    let mut cur = *prev;
+
+    while !cur.is_null() {
+        let found = match (*cur).table {
+            Table::Single(addr) => addr == begin,
+            _ => false,
+        };
+        if found {
+            *prev = (*cur).next;
+            return cur;
+        }
+        prev = &mut (*cur).next;
+        cur = *prev;
+    }
+
+    core::ptr::null_mut()
+}
+
+#[no_mangle]
+unsafe extern "C" fn __deregister_frame_info(begin: *const c_void) -> *mut Object {
+    __deregister_frame_info_bases(begin)
+}
+
+#[no_mangle]
+unsafe extern "C" fn __deregister_frame(begin: *const c_void) {
+    if begin.is_null() {
+        return;
+    }
+    let storage = __deregister_frame_info(begin);
+    drop(Box::from_raw(storage as *mut MaybeUninit<Object>))
+}

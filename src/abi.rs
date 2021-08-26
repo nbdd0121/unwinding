@@ -75,6 +75,7 @@ pub struct UnwindException {
     pub exception_cleanup: Option<UnwindExceptionCleanupFn>,
     private_1: Option<UnwindStopFn>,
     private_2: usize,
+    private_unused: [usize; Arch::UNWIND_PRIVATE_DATA_SIZE - 2],
 }
 
 pub type UnwindTraceFn =
@@ -128,9 +129,7 @@ pub extern "C" fn _Unwind_SetIP(unwind_ctx: &mut UnwindContext<'_>, value: usize
 }
 
 #[no_mangle]
-pub extern "C" fn _Unwind_GetLanguageSpecificData(
-    unwind_ctx: &UnwindContext<'_>,
-) -> *mut c_void {
+pub extern "C" fn _Unwind_GetLanguageSpecificData(unwind_ctx: &UnwindContext<'_>) -> *mut c_void {
     unwind_ctx
         .frame
         .map(|f| f.lsda() as *mut c_void)

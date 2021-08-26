@@ -6,6 +6,7 @@ use gimli::{Register, RiscV};
 #[derive(Clone, Default)]
 pub struct Context {
     pub gp: [usize; 32],
+    #[cfg(target_feature = "d")]
     pub fp: [usize; 32],
 }
 
@@ -15,6 +16,7 @@ impl fmt::Debug for Context {
         for i in 0..=31 {
             fmt.field(RiscV::register_name(Register(i as _)).unwrap(), &self.gp[i]);
         }
+        #[cfg(target_feature = "d")]
         for i in 0..=31 {
             fmt.field(
                 RiscV::register_name(Register((i + 32) as _)).unwrap(),
@@ -31,6 +33,7 @@ impl ops::Index<Register> for Context {
     fn index(&self, reg: Register) -> &usize {
         match reg {
             Register(0..=31) => &self.gp[reg.0 as usize],
+            #[cfg(target_feature = "d")]
             Register(32..=63) => &self.fp[(reg.0 - 32) as usize],
             _ => unimplemented!(),
         }
@@ -41,6 +44,7 @@ impl ops::IndexMut<gimli::Register> for Context {
     fn index_mut(&mut self, reg: Register) -> &mut usize {
         match reg {
             Register(0..=31) => &mut self.gp[reg.0 as usize],
+            #[cfg(target_feature = "d")]
             Register(32..=63) => &mut self.fp[(reg.0 - 32) as usize],
             _ => unimplemented!(),
         }
@@ -169,10 +173,7 @@ pub extern "C-unwind" fn save_context() -> Context {
     }
     #[cfg(not(target_feature = "d"))]
     unsafe {
-        asm!(
-            concat!(code!(save_gp), "ret"),
-            options(noreturn)
-        );
+        asm!(concat!(code!(save_gp), "ret"), options(noreturn));
     }
 }
 

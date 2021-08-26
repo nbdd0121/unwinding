@@ -6,6 +6,7 @@
     feature(lang_items)
 )]
 #![cfg_attr(feature = "panic", feature(core_intrinsics))]
+#![cfg_attr(feature = "panic-handler", feature(thread_local))]
 #![warn(rust_2018_idioms)]
 #![warn(unsafe_op_in_unsafe_fn)]
 #![no_std]
@@ -30,6 +31,9 @@ mod personality_dummy;
 
 #[cfg(feature = "panic")]
 pub mod panic;
+
+#[cfg(feature = "panic-handler")]
+pub mod panic_handler;
 
 #[cfg(feature = "system-alloc")]
 mod system_alloc;

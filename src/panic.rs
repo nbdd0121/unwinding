@@ -3,6 +3,8 @@ use core::any::Any;
 use core::mem::ManuallyDrop;
 
 use crate::abi::*;
+#[cfg(feature = "panic-handler")]
+pub use crate::panic_handler::*;
 
 #[repr(C)]
 struct Exception {
@@ -20,7 +22,14 @@ pub fn begin_panic(payload: Box<dyn Any + Send>) -> UnwindReasonCode {
         unsafe {
             let _ = Box::from_raw(exception as *mut Exception);
         }
-        core::intrinsics::abort();
+        #[cfg(feature = "panic-handler")]
+        {
+            drop_panic();
+        }
+        #[cfg(not(feature = "panic-handler"))]
+        {
+            core::intrinsics::abort();
+        }
     }
 
     let mut unwind_ex = UnwindException::new();
@@ -38,7 +47,18 @@ unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send + 'static> {
     let exception = payload as *mut UnwindException;
     if unsafe { (*exception).exception_class } != RUST_EXCEPTION_CLASS {
         unsafe { _Unwind_DeleteException(exception) };
-        core::intrinsics::abort();
+        #[cfg(feature = "panic-handler")]
+        {
+            foreign_exception();
+        }
+        #[cfg(not(feature = "panic-handler"))]
+        {
+            core::intrinsics::abort();
+        }
+    }
+    #[cfg(feature = "panic-handler")]
+    {
+        panic_caught();
     }
     let unwind_ex = unsafe { Box::from_raw(exception as *mut Exception) };
     unwind_ex.payload

@@ -5,6 +5,8 @@ This library serves two purposes:
 1. Provide a pure Rust alternative to libgcc_eh or libunwind.
 2. Provide easier unwinding support for `#![no_std]` targets.
 
+Currently supports x86_64 and RV64.
+
 ## Unwinder
 
 The unwinder can be enabled with `unwinder` feature. Here are the feature gates related to
@@ -44,3 +46,8 @@ Here are the feature gates related:
 | system-alloc  | No      | Provides a global allocator which calls `malloc` and friends. Provided for convience. |
 
 If you are writing a `#![no_std]` program, simply enable `personality`, `panic-handler` and `system-alloc` in addition to the defaults, you instantly obtains the ability to do unwinding! An example is given in [`example/`](example).
+
+## TODO
+
+* A better project name!
+* Remove dependencies on `alloc`.

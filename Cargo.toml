@@ -14,6 +14,7 @@ spin = { version = "0.9", default-features = false, features = ["mutex", "spin_m
 
 [features]
 alloc = []
+unwinder = []
 fde-phdr = ["libc"]
 fde-registry = ["alloc"]
 dwarf-expr = []
@@ -25,7 +26,7 @@ panic = ["alloc"]
 panic-handler = ["print", "panic"]
 panic-handler-dummy = []
 system-alloc = []
-default = ["dwarf-expr", "hide-trace", "fde-phdr", "fde-registry"]
+default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr", "fde-registry"]
 
 [profile.dev]
 # Must be turned on due to Rust bug https://github.com/rust-lang/rust/issues/50007

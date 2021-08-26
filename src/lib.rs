@@ -17,11 +17,12 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[cfg(feature = "unwinder")]
+mod unwinder;
+
 pub mod abi;
 
 mod arch;
-mod find_fde;
-mod frame;
 mod util;
 
 #[cfg(feature = "print")]

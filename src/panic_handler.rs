@@ -65,7 +65,11 @@ fn stack_trace() {
     ) -> UnwindReasonCode {
         let data = unsafe { &mut *(arg as *mut CallbackData) };
         data.counter += 1;
-        eprintln!("{:4}:{:#19x} - <unknown>", data.counter, _Unwind_GetIP(unwind_ctx));
+        eprintln!(
+            "{:4}:{:#19x} - <unknown>",
+            data.counter,
+            _Unwind_GetIP(unwind_ctx)
+        );
         UnwindReasonCode::NO_REASON
     }
     let mut data = CallbackData { counter: 0 };

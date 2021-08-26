@@ -3,9 +3,9 @@ use gimli::{
     UninitializedUnwindContext, UnwindTableRow, Value,
 };
 
+use super::find_fde::{self, FDEFinder, FDESearchResult};
 use crate::abi::PersonalityRoutine;
 use crate::arch::*;
-use crate::find_fde::{self, FDEFinder, FDESearchResult};
 use crate::util::*;
 
 #[derive(Debug)]

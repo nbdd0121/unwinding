@@ -1,4 +1,4 @@
-use crate::find_fde::FDESearchResult;
+use super::FDESearchResult;
 use crate::util::*;
 
 use core::ffi::c_void;

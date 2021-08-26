@@ -1,3 +1,5 @@
+#[cfg(feature = "fde-static")]
+mod fixed;
 #[cfg(feature = "fde-phdr")]
 mod phdr;
 #[cfg(feature = "fde-registry")]
@@ -27,6 +29,10 @@ impl FDEFinder for GlobalFinder {
         }
         #[cfg(feature = "fde-phdr")]
         if let Some(v) = phdr::get_finder().find_fde(pc) {
+            return Some(v);
+        }
+        #[cfg(feature = "fde-static")]
+        if let Some(v) = fixed::get_finder().find_fde(pc) {
             return Some(v);
         }
         None

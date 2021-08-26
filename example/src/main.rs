@@ -36,16 +36,20 @@ fn bar() {
     foo()
 }
 
+fn main() {
+    let _ = unwind::panic::catch_unwind(|| {
+        bar();
+        println!("done");
+    });
+    println!("caught");
+    let _p = PanicOnDrop;
+    foo();
+}
+
 #[start]
-fn main(_argc: isize, _argv: *const *const u8) -> isize {
+fn start(_argc: isize, _argv: *const *const u8) -> isize {
     unwind::panic::catch_unwind(|| {
-        let _ = unwind::panic::catch_unwind(|| {
-            bar();
-            println!("done");
-        });
-        println!("caught");
-        let _p = PanicOnDrop;
-        foo();
+        main();
         0
     })
     .unwrap_or(101)

@@ -17,8 +17,9 @@ alloc = []
 fde-phdr = ["libc"]
 fde-registry = ["alloc"]
 dwarf-expr = []
+hide-trace = []
 system-alloc = []
-default = ["dwarf-expr", "fde-phdr", "fde-registry"]
+default = ["dwarf-expr", "hide-trace", "fde-phdr", "fde-registry"]
 
 [profile.dev]
 # Must be turned on due to Rust bug https://github.com/rust-lang/rust/issues/50007

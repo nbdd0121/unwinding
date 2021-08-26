@@ -402,7 +402,7 @@ pub unsafe extern "C-unwind" fn _Unwind_Backtrace(
     trace_argument: *mut c_void,
 ) -> UnwindReasonCode {
     let mut ctx = save_context();
-    let mut skipping = true;
+    let mut skipping = cfg!(feature = "hide-trace");
 
     loop {
         let frame = try1!(Frame::from_context(&ctx));

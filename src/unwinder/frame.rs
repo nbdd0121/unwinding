@@ -6,6 +6,7 @@ use gimli::{
 use super::find_fde::{self, FDEFinder, FDESearchResult};
 use crate::abi::PersonalityRoutine;
 use crate::arch::*;
+use super::arch::*;
 use crate::util::*;
 
 #[derive(Debug)]

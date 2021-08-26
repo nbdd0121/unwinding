@@ -11,17 +11,6 @@ pub struct Context {
     pub fcw: usize,
 }
 
-pub struct Arch;
-
-#[allow(unused)]
-impl Arch {
-    pub const SP: Register = X86_64::RSP;
-    pub const RA: Register = X86_64::RA;
-
-    pub const UNWIND_DATA_REG: (Register, Register) = (X86_64::RAX, X86_64::RDX);
-    pub const UNWIND_PRIVATE_DATA_SIZE: usize = 6;
-}
-
 impl fmt::Debug for Context {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fmt = fmt.debug_struct("Context");

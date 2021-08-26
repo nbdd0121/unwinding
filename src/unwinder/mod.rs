@@ -1,3 +1,4 @@
+mod arch;
 mod find_fde;
 mod frame;
 
@@ -8,6 +9,7 @@ use gimli::Register;
 use crate::abi::*;
 use crate::arch::*;
 use crate::util::*;
+use arch::*;
 use find_fde::FDEFinder;
 use frame::Frame;
 

@@ -9,7 +9,7 @@ use crate::frame::Frame;
 use crate::util::*;
 
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct UnwindReasonCode(c_int);
 
 #[allow(unused)]
@@ -26,12 +26,10 @@ impl UnwindReasonCode {
 }
 
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct UnwindAction(c_int);
 
-#[allow(unused)]
 impl UnwindAction {
-    pub const NONE: Self = Self(0);
     pub const SEARCH_PHASE: Self = Self(1);
     pub const CLEANUP_PHASE: Self = Self(2);
     pub const HANDLER_FRAME: Self = Self(4);
@@ -41,8 +39,22 @@ impl UnwindAction {
 
 impl ops::BitOr for UnwindAction {
     type Output = Self;
+
+    #[inline]
     fn bitor(self, rhs: Self) -> Self {
         Self(self.0 | rhs.0)
+    }
+}
+
+impl UnwindAction {
+    #[inline]
+    pub const fn empty() -> Self {
+        Self(0)
+    }
+
+    #[inline]
+    pub const fn contains(&self, other: Self) -> bool {
+        self.0 & other.0 != 0
     }
 }
 
@@ -234,7 +246,7 @@ fn raise_exception_phase2(
                         | if is_handler {
                             UnwindAction::HANDLER_FRAME
                         } else {
-                            UnwindAction::NONE
+                            UnwindAction::empty()
                         },
                     exception.exception_class,
                     exception,
@@ -295,7 +307,7 @@ unsafe fn force_unwind_phase2(
                     | if frame.is_none() {
                         UnwindAction::END_OF_STACK
                     } else {
-                        UnwindAction::NONE
+                        UnwindAction::empty()
                     },
                 exception.exception_class,
                 exception,

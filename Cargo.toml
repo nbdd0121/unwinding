@@ -23,6 +23,7 @@ personality-dummy = []
 print = ["libc"]
 panic = ["alloc"]
 panic-handler = ["print", "panic"]
+panic-handler-dummy = []
 system-alloc = []
 default = ["dwarf-expr", "hide-trace", "fde-phdr", "fde-registry"]
 

@@ -4,7 +4,7 @@ use core::ops;
 use crate::util::*;
 
 #[cfg(feature = "unwinder")]
-use crate::unwinder::*;
+pub use crate::unwinder::*;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]

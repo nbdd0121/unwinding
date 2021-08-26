@@ -1,7 +1,6 @@
 use core::ffi::c_void;
 use core::ops;
 
-use crate::arch::*;
 use crate::util::*;
 
 #[cfg(feature = "unwinder")]
@@ -87,6 +86,7 @@ pub type UnwindTraceFn =
     extern "C" fn(ctx: &mut UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode;
 
 #[cfg(not(feature = "unwinder"))]
+#[repr(C)]
 pub struct UnwindContext<'a> {
     opaque: usize,
     phantom: core::marker::PhantomData<&'a ()>,
@@ -99,3 +99,61 @@ pub type PersonalityRoutine = extern "C" fn(
     &mut UnwindException,
     &mut UnwindContext<'_>,
 ) -> UnwindReasonCode;
+
+#[cfg(not(feature = "unwinder"))]
+macro_rules! binding {
+    ($(extern $abi: literal $([$t:tt])? fn $name: ident ($($arg: ident : $arg_ty: ty),*$(,)?) $(-> $ret: ty)?;)*) => {
+        $(
+            #[allow(non_snake_case)]
+            #[inline]
+            pub $($t)? fn $name($($arg: $arg_ty),*) $(-> $ret)? {
+                extern $abi {
+                    fn $name($($arg: $arg_ty),*) $(-> $ret)?;
+                }
+                unsafe { $name($($arg),*) }
+            }
+        )*
+    };
+}
+
+#[cfg(not(feature = "unwinder"))]
+binding! {
+    extern "C" fn _Unwind_GetGR(unwind_ctx: &UnwindContext<'_>, index: c_int) -> usize;
+    extern "C" fn _Unwind_GetCFA(unwind_ctx: &UnwindContext<'_>) -> usize;
+    extern "C" fn _Unwind_SetGR(
+        unwind_ctx: &mut UnwindContext<'_>,
+        index: c_int,
+        value: usize,
+    );
+    extern "C" fn _Unwind_GetIP(unwind_ctx: &UnwindContext<'_>) -> usize;
+    extern "C" fn _Unwind_GetIPInfo(
+        unwind_ctx: &UnwindContext<'_>,
+        ip_before_insn: &mut c_int,
+    ) -> usize;
+    extern "C" fn _Unwind_SetIP(
+        unwind_ctx: &mut UnwindContext<'_>,
+        value: usize,
+    );
+    extern "C" fn _Unwind_GetLanguageSpecificData(unwind_ctx: &UnwindContext<'_>) -> *mut c_void;
+    extern "C" fn _Unwind_GetRegionStart(unwind_ctx: &UnwindContext<'_>) -> usize;
+    extern "C" fn _Unwind_GetTextRelBase(unwind_ctx: &UnwindContext<'_>) -> usize;
+    extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &UnwindContext<'_>) -> usize;
+    extern "C" fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void;
+    extern "C-unwind" fn _Unwind_RaiseException(
+        exception: &mut UnwindException,
+    ) -> UnwindReasonCode;
+    extern "C-unwind" fn _Unwind_ForceUnwind(
+        exception: &mut UnwindException,
+        stop: UnwindStopFn,
+        stop_arg: *mut c_void,
+    ) -> UnwindReasonCode;
+    extern "C-unwind" fn _Unwind_Resume(exception: &mut UnwindException) -> !;
+    extern "C-unwind" fn _Unwind_Resume_or_Rethrow(
+        exception: &mut UnwindException,
+    ) -> UnwindReasonCode;
+    extern "C" [unsafe] fn _Unwind_DeleteException(exception: *mut UnwindException);
+    extern "C-unwind" fn _Unwind_Backtrace(
+        trace: UnwindTraceFn,
+        trace_argument: *mut c_void,
+    ) -> UnwindReasonCode;
+}

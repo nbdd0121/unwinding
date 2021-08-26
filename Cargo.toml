@@ -20,6 +20,7 @@ dwarf-expr = []
 hide-trace = []
 personality = []
 personality-dummy = []
+print = ["libc"]
 system-alloc = []
 default = ["dwarf-expr", "hide-trace", "fde-phdr", "fde-registry"]
 

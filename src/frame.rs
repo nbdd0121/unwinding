@@ -3,10 +3,10 @@ use gimli::{
     UninitializedUnwindContext, UnwindTableRow, Value,
 };
 
+use crate::abi::PersonalityRoutine;
 use crate::arch::*;
 use crate::find_fde::{self, FDEFinder, FDESearchResult};
 use crate::util::*;
-use crate::abi::PersonalityRoutine;
 
 #[derive(Debug)]
 pub struct Frame {

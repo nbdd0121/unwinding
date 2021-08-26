@@ -1,11 +1,12 @@
+use core::ffi::c_void;
 use core::ops;
 use core::ptr;
 use gimli::Register;
-use libc::{c_int, c_void};
 
 use crate::arch::*;
 use crate::find_fde::{self, FDEFinder};
 use crate::frame::Frame;
+use crate::util::*;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

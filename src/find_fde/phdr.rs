@@ -1,9 +1,11 @@
-use super::FDESearchResult;
-use crate::util::{deref_pointer, get_unlimited_slice};
+use crate::find_fde::FDESearchResult;
+use crate::util::*;
+
+use core::ffi::c_void;
 use core::mem;
 use core::slice;
 use gimli::{BaseAddresses, EhFrame, EhFrameHdr, NativeEndian, UnwindSection};
-use libc::{c_int, c_void, dl_iterate_phdr, dl_phdr_info, PT_DYNAMIC, PT_GNU_EH_FRAME, PT_LOAD};
+use libc::{dl_iterate_phdr, dl_phdr_info, PT_DYNAMIC, PT_GNU_EH_FRAME, PT_LOAD};
 
 struct CallbackData {
     pc: usize,

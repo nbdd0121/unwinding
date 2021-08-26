@@ -16,3 +16,10 @@ pub unsafe fn deref_pointer(ptr: Pointer) -> usize {
         Pointer::Indirect(x) => unsafe { *(x as *const _) },
     }
 }
+
+#[cfg(feature = "libc")]
+pub use libc::c_int;
+
+#[cfg(not(feature = "libc"))]
+#[allow(non_camel_case_types)]
+pub type c_int = i32;

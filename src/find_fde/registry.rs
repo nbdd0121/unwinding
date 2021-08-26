@@ -1,9 +1,9 @@
 use super::FDESearchResult;
 use crate::util::get_unlimited_slice;
+use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use core::ptr;
 use gimli::{BaseAddresses, EhFrame, NativeEndian, UnwindSection};
-use libc::c_void;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 

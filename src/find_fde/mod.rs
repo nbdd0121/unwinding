@@ -1,4 +1,6 @@
+#[cfg(feature = "fde-phdr")]
 mod phdr;
+#[cfg(feature = "fde-registry")]
 mod registry;
 
 use crate::util::*;
@@ -19,9 +21,11 @@ pub struct GlobalFinder(());
 
 impl FDEFinder for GlobalFinder {
     fn find_fde(&self, pc: usize) -> Option<FDESearchResult> {
+        #[cfg(feature = "fde-registry")]
         if let Some(v) = registry::get_finder().find_fde(pc) {
             return Some(v);
         }
+        #[cfg(feature = "fde-phdr")]
         if let Some(v) = phdr::get_finder().find_fde(pc) {
             return Some(v);
         }

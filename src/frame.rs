@@ -6,6 +6,7 @@ use gimli::{
 use crate::arch::*;
 use crate::find_fde::{self, FDEFinder, FDESearchResult};
 use crate::util::*;
+use crate::abi::PersonalityRoutine;
 
 #[derive(Debug)]
 pub struct Frame {
@@ -121,11 +122,12 @@ impl Frame {
         &self.fde_result.bases
     }
 
-    pub fn personality(&self) -> Option<usize> {
+    pub fn personality(&self) -> Option<PersonalityRoutine> {
         self.fde_result
             .fde
             .personality()
             .map(|x| unsafe { deref_pointer(x) })
+            .map(|x| unsafe { core::mem::transmute(x) })
     }
 
     pub fn lsda(&self) -> usize {

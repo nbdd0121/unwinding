@@ -8,5 +8,5 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-unwind = { path = "../", features = ["fde-registry"] }
+unwind = { path = "../", features = ["system-alloc"] }
 libc = "0.2"

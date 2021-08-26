@@ -44,6 +44,7 @@ impl Frame {
         Ok(Some(Self { fde_result, row }))
     }
 
+    #[cfg(feature = "dwarf-expr")]
     fn evaluate_expression(
         &self,
         ctx: &Context,
@@ -81,6 +82,15 @@ impl Frame {
                 _ => unreachable!(),
             },
         )
+    }
+
+    #[cfg(not(feature = "dwarf-expr"))]
+    fn evaluate_expression(
+        &self,
+        ctx: &Context,
+        expr: Expression<StaticSlice>,
+    ) -> Result<usize, gimli::Error> {
+        Err(gimli::Error::UnsupportedEvaluation)
     }
 
     pub fn unwind(&self, ctx: &Context) -> Result<Context, gimli::Error> {

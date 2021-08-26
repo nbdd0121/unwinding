@@ -16,8 +16,9 @@ spin = { version = "0.9", default-features = false, features = ["mutex", "spin_m
 alloc = []
 fde-phdr = ["libc"]
 fde-registry = ["alloc"]
+dwarf-expr = []
 system-alloc = []
-default = ["fde-phdr"]
+default = ["dwarf-expr", "fde-phdr", "fde-registry"]
 
 [profile.dev]
 # Must be turned on due to Rust bug https://github.com/rust-lang/rust/issues/50007

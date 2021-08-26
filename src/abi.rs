@@ -1,5 +1,9 @@
+use core::ptr;
+use gimli::Register;
 use libc::{c_int, c_void};
 
+use crate::arch::*;
+use crate::find_fde::{self, FDEFinder};
 use crate::frame::Frame;
 
 #[repr(transparent)]
@@ -54,6 +58,7 @@ pub type UnwindTraceFn =
 
 pub struct UnwindContext<'a> {
     frame: &'a Frame,
+    ctx: &'a mut Context,
 }
 
 pub type PersonalityRoutine = extern "C" fn(
@@ -63,3 +68,67 @@ pub type PersonalityRoutine = extern "C" fn(
     *mut UnwindException,
     *mut UnwindContext<'_>,
 ) -> UnwindReasonCode;
+
+#[no_mangle]
+pub extern "C" fn _Unwind_GetGR(unwind_ctx: &mut UnwindContext<'_>, index: c_int) -> usize {
+    unwind_ctx.ctx[Register(index as u16)]
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_GetCFA(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+    unwind_ctx.ctx[Arch::SP]
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_SetGR(unwind_ctx: &mut UnwindContext<'_>, index: c_int, value: usize) {
+    unwind_ctx.ctx[Register(index as u16)] = value;
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_GetIP(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+    unwind_ctx.ctx[Arch::RA]
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_GetIPInfo(
+    unwind_ctx: &mut UnwindContext<'_>,
+    ip_before_insn: &mut c_int,
+) -> usize {
+    *ip_before_insn = 0;
+    unwind_ctx.ctx[Arch::RA]
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_SetIP(unwind_ctx: &mut UnwindContext<'_>, value: usize) {
+    unwind_ctx.ctx[Arch::RA] = value;
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_GetLanguageSpecificData(
+    unwind_ctx: &mut UnwindContext<'_>,
+) -> *mut c_void {
+    unwind_ctx.frame.lsda() as *mut c_void
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_GetRegionStart(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+    unwind_ctx.frame.initial_address()
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_GetTextRelBase(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+    unwind_ctx.frame.bases().eh_frame.text.unwrap() as _
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+    unwind_ctx.frame.bases().eh_frame.data.unwrap() as _
+}
+
+#[no_mangle]
+pub extern "C" fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void {
+    match find_fde::get_finder().find_fde(pc as usize - 1) {
+        Some(v) => v.fde.initial_address() as usize as _,
+        None => ptr::null_mut(),
+    }
+}

@@ -14,4 +14,7 @@ mod find_fde;
 mod frame;
 mod util;
 
+#[cfg(feature = "system-alloc")]
+mod system_alloc;
+
 pub use abi::*;

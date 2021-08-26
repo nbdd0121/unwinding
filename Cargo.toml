@@ -16,6 +16,7 @@ spin = { version = "0.9", default-features = false, features = ["mutex", "spin_m
 alloc = []
 fde-phdr = ["libc"]
 fde-registry = ["alloc"]
+system-alloc = []
 default = ["fde-phdr"]
 
 [profile.dev]

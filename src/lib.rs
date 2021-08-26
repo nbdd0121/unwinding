@@ -14,6 +14,9 @@ mod find_fde;
 mod frame;
 mod util;
 
+#[cfg(feature = "personality-dummy")]
+mod personality_dummy;
+
 #[cfg(feature = "system-alloc")]
 mod system_alloc;
 

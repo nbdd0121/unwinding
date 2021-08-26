@@ -8,5 +8,5 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-unwind = { path = "../", features = ["system-alloc"] }
+unwind = { path = "../", features = ["system-alloc", "personality-dummy"] }
 libc = "0.2"

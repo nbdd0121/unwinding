@@ -94,12 +94,12 @@ pub type PersonalityRoutine = extern "C" fn(
 ) -> UnwindReasonCode;
 
 #[no_mangle]
-pub extern "C" fn _Unwind_GetGR(unwind_ctx: &mut UnwindContext<'_>, index: c_int) -> usize {
+pub extern "C" fn _Unwind_GetGR(unwind_ctx: &UnwindContext<'_>, index: c_int) -> usize {
     unwind_ctx.ctx[Register(index as u16)]
 }
 
 #[no_mangle]
-pub extern "C" fn _Unwind_GetCFA(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+pub extern "C" fn _Unwind_GetCFA(unwind_ctx: &UnwindContext<'_>) -> usize {
     unwind_ctx.ctx[Arch::SP]
 }
 
@@ -109,13 +109,13 @@ pub extern "C" fn _Unwind_SetGR(unwind_ctx: &mut UnwindContext<'_>, index: c_int
 }
 
 #[no_mangle]
-pub extern "C" fn _Unwind_GetIP(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+pub extern "C" fn _Unwind_GetIP(unwind_ctx: &UnwindContext<'_>) -> usize {
     unwind_ctx.ctx[Arch::RA]
 }
 
 #[no_mangle]
 pub extern "C" fn _Unwind_GetIPInfo(
-    unwind_ctx: &mut UnwindContext<'_>,
+    unwind_ctx: &UnwindContext<'_>,
     ip_before_insn: &mut c_int,
 ) -> usize {
     *ip_before_insn = 0;
@@ -129,7 +129,7 @@ pub extern "C" fn _Unwind_SetIP(unwind_ctx: &mut UnwindContext<'_>, value: usize
 
 #[no_mangle]
 pub extern "C" fn _Unwind_GetLanguageSpecificData(
-    unwind_ctx: &mut UnwindContext<'_>,
+    unwind_ctx: &UnwindContext<'_>,
 ) -> *mut c_void {
     unwind_ctx
         .frame
@@ -138,12 +138,12 @@ pub extern "C" fn _Unwind_GetLanguageSpecificData(
 }
 
 #[no_mangle]
-pub extern "C" fn _Unwind_GetRegionStart(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+pub extern "C" fn _Unwind_GetRegionStart(unwind_ctx: &UnwindContext<'_>) -> usize {
     unwind_ctx.frame.map(|f| f.initial_address()).unwrap_or(0)
 }
 
 #[no_mangle]
-pub extern "C" fn _Unwind_GetTextRelBase(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+pub extern "C" fn _Unwind_GetTextRelBase(unwind_ctx: &UnwindContext<'_>) -> usize {
     unwind_ctx
         .frame
         .map(|f| f.bases().eh_frame.text.unwrap() as _)
@@ -151,7 +151,7 @@ pub extern "C" fn _Unwind_GetTextRelBase(unwind_ctx: &mut UnwindContext<'_>) -> 
 }
 
 #[no_mangle]
-pub extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &mut UnwindContext<'_>) -> usize {
+pub extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &UnwindContext<'_>) -> usize {
     unwind_ctx
         .frame
         .map(|f| f.bases().eh_frame.data.unwrap() as _)

@@ -1,12 +1,13 @@
 use gimli::{
-    BaseAddresses, CfaRule, EvaluationResult, Expression, Location, RegisterRule,
-    UninitializedUnwindContext, UnwindTableRow, Value,
+    BaseAddresses, CfaRule, Expression, RegisterRule, UninitializedUnwindContext, UnwindTableRow,
 };
+#[cfg(feature = "dwarf-expr")]
+use gimli::{EvaluationResult, Location, Value};
 
+use super::arch::*;
 use super::find_fde::{self, FDEFinder, FDESearchResult};
 use crate::abi::PersonalityRoutine;
 use crate::arch::*;
-use super::arch::*;
 use crate::util::*;
 
 #[derive(Debug)]
@@ -88,8 +89,8 @@ impl Frame {
     #[cfg(not(feature = "dwarf-expr"))]
     fn evaluate_expression(
         &self,
-        ctx: &Context,
-        expr: Expression<StaticSlice>,
+        _ctx: &Context,
+        _expr: Expression<StaticSlice>,
     ) -> Result<usize, gimli::Error> {
         Err(gimli::Error::UnsupportedEvaluation)
     }

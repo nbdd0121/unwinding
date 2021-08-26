@@ -19,7 +19,7 @@ impl Arch {
 }
 
 impl fmt::Debug for Context {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fmt = fmt.debug_struct("Context");
         for i in 0..=15 {
             fmt.field(
@@ -91,43 +91,45 @@ pub extern "C-unwind" fn save_context() -> Context {
 
 #[naked]
 pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
-    asm!(
-        "
-        /* Restore stack */
-        mov rsp, [rdi + 0x38]
+    unsafe {
+        asm!(
+            "
+            /* Restore stack */
+            mov rsp, [rdi + 0x38]
 
-        /* Restore callee-saved control registers */
-        ldmxcsr [rdi + 0x88]
-        fldcw [rdi + 0x90]
+            /* Restore callee-saved control registers */
+            ldmxcsr [rdi + 0x88]
+            fldcw [rdi + 0x90]
 
-        /* Restore return address */
-        mov rax, [rdi + 0x80]
-        push rax
+            /* Restore return address */
+            mov rax, [rdi + 0x80]
+            push rax
 
-        /*
-         * Restore general-purpose registers. Non-callee-saved registers are
-         * also restored because sometimes it's used to pass unwind arguments.
-         */
-        mov rax, [rdi + 0x00]
-        mov rdx, [rdi + 0x08]
-        mov rcx, [rdi + 0x10]
-        mov rbx, [rdi + 0x18]
-        mov rsi, [rdi + 0x20]
-        mov rbp, [rdi + 0x30]
-        mov r8 , [rdi + 0x40]
-        mov r9 , [rdi + 0x48]
-        mov r10, [rdi + 0x50]
-        mov r11, [rdi + 0x58]
-        mov r12, [rdi + 0x60]
-        mov r13, [rdi + 0x68]
-        mov r14, [rdi + 0x70]
-        mov r15, [rdi + 0x78]
+            /*
+            * Restore general-purpose registers. Non-callee-saved registers are
+            * also restored because sometimes it's used to pass unwind arguments.
+            */
+            mov rax, [rdi + 0x00]
+            mov rdx, [rdi + 0x08]
+            mov rcx, [rdi + 0x10]
+            mov rbx, [rdi + 0x18]
+            mov rsi, [rdi + 0x20]
+            mov rbp, [rdi + 0x30]
+            mov r8 , [rdi + 0x40]
+            mov r9 , [rdi + 0x48]
+            mov r10, [rdi + 0x50]
+            mov r11, [rdi + 0x58]
+            mov r12, [rdi + 0x60]
+            mov r13, [rdi + 0x68]
+            mov r14, [rdi + 0x70]
+            mov r15, [rdi + 0x78]
 
-        /* RDI resotred last */
-        mov rdi, [rdi + 0x28]
+            /* RDI resotred last */
+            mov rdi, [rdi + 0x28]
 
-        ret
-        ",
-        options(noreturn)
-    );
+            ret
+            ",
+            options(noreturn)
+        );
+    }
 }

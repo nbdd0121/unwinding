@@ -41,9 +41,9 @@ pub fn get_finder() -> &'static Registry {
 impl super::FDEFinder for Registry {
     fn find_fde(&self, pc: usize) -> Option<FDESearchResult> {
         let guard = get_finder().inner.lock().unwrap();
-        let mut cur = guard.object;
-
         unsafe {
+            let mut cur = guard.object;
+
             while !cur.is_null() {
                 let bases = BaseAddresses::default()
                     .set_text((*cur).tbase as _)
@@ -103,21 +103,23 @@ unsafe extern "C" fn __register_frame_info_bases(
         return;
     }
 
-    ob.write(Object {
-        next: core::ptr::null_mut(),
-        tbase: tbase as _,
-        dbase: dbase as _,
-        table: Table::Single(begin),
-    });
+    unsafe {
+        ob.write(Object {
+            next: core::ptr::null_mut(),
+            tbase: tbase as _,
+            dbase: dbase as _,
+            table: Table::Single(begin),
+        });
 
-    let mut guard = get_finder().inner.lock().unwrap();
-    (*ob).next = guard.object;
-    guard.object = ob;
+        let mut guard = get_finder().inner.lock().unwrap();
+        (*ob).next = guard.object;
+        guard.object = ob;
+    }
 }
 
 #[no_mangle]
 unsafe extern "C" fn __register_frame_info(begin: *const c_void, ob: *mut Object) {
-    __register_frame_info_bases(begin, ob, core::ptr::null_mut(), core::ptr::null_mut());
+    unsafe { __register_frame_info_bases(begin, ob, core::ptr::null_mut(), core::ptr::null_mut()) }
 }
 
 #[no_mangle]
@@ -127,7 +129,7 @@ unsafe extern "C" fn __register_frame(begin: *const c_void) {
     }
 
     let storage = Box::into_raw(Box::new(MaybeUninit::<Object>::uninit())) as *mut Object;
-    __register_frame_info(begin, storage);
+    unsafe { __register_frame_info(begin, storage) }
 }
 
 #[no_mangle]
@@ -137,21 +139,25 @@ unsafe extern "C" fn __register_frame_info_table_bases(
     tbase: *const c_void,
     dbase: *const c_void,
 ) {
-    ob.write(Object {
-        next: core::ptr::null_mut(),
-        tbase: tbase as _,
-        dbase: dbase as _,
-        table: Table::Multiple(begin as _),
-    });
+    unsafe {
+        ob.write(Object {
+            next: core::ptr::null_mut(),
+            tbase: tbase as _,
+            dbase: dbase as _,
+            table: Table::Multiple(begin as _),
+        });
 
-    let mut guard = get_finder().inner.lock().unwrap();
-    (*ob).next = guard.object;
-    guard.object = ob;
+        let mut guard = get_finder().inner.lock().unwrap();
+        (*ob).next = guard.object;
+        guard.object = ob;
+    }
 }
 
 #[no_mangle]
 unsafe extern "C" fn __register_frame_info_table(begin: *const c_void, ob: *mut Object) {
-    __register_frame_info_table_bases(begin, ob, core::ptr::null_mut(), core::ptr::null_mut());
+    unsafe {
+        __register_frame_info_table_bases(begin, ob, core::ptr::null_mut(), core::ptr::null_mut())
+    }
 }
 
 #[no_mangle]
@@ -161,37 +167,39 @@ unsafe extern "C" fn __register_frame_table(begin: *const c_void) {
     }
 
     let storage = Box::into_raw(Box::new(MaybeUninit::<Object>::uninit())) as *mut Object;
-    __register_frame_info_table(begin, storage);
+    unsafe { __register_frame_info_table(begin, storage) }
 }
 
 #[no_mangle]
-unsafe extern "C" fn __deregister_frame_info_bases(begin: *const c_void) -> *mut Object {
+extern "C" fn __deregister_frame_info_bases(begin: *const c_void) -> *mut Object {
     if begin.is_null() {
         return core::ptr::null_mut();
     }
 
     let mut guard = get_finder().inner.lock().unwrap();
-    let mut prev = &mut guard.object;
-    let mut cur = *prev;
+    unsafe {
+        let mut prev = &mut guard.object;
+        let mut cur = *prev;
 
-    while !cur.is_null() {
-        let found = match (*cur).table {
-            Table::Single(addr) => addr == begin,
-            _ => false,
-        };
-        if found {
-            *prev = (*cur).next;
-            return cur;
+        while !cur.is_null() {
+            let found = match (*cur).table {
+                Table::Single(addr) => addr == begin,
+                _ => false,
+            };
+            if found {
+                *prev = (*cur).next;
+                return cur;
+            }
+            prev = &mut (*cur).next;
+            cur = *prev;
         }
-        prev = &mut (*cur).next;
-        cur = *prev;
     }
 
     core::ptr::null_mut()
 }
 
 #[no_mangle]
-unsafe extern "C" fn __deregister_frame_info(begin: *const c_void) -> *mut Object {
+extern "C" fn __deregister_frame_info(begin: *const c_void) -> *mut Object {
     __deregister_frame_info_bases(begin)
 }
 
@@ -201,5 +209,5 @@ unsafe extern "C" fn __deregister_frame(begin: *const c_void) {
         return;
     }
     let storage = __deregister_frame_info(begin);
-    drop(Box::from_raw(storage as *mut MaybeUninit<Object>))
+    drop(unsafe { Box::from_raw(storage as *mut MaybeUninit<Object>) })
 }

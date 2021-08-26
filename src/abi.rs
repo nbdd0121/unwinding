@@ -1,3 +1,4 @@
+use core::ops;
 use core::ptr;
 use gimli::Register;
 use libc::{c_int, c_void};
@@ -29,6 +30,7 @@ pub struct UnwindAction(c_int);
 
 #[allow(unused)]
 impl UnwindAction {
+    pub const NONE: Self = Self(0);
     pub const SEARCH_PHASE: Self = Self(1);
     pub const CLEANUP_PHASE: Self = Self(2);
     pub const HANDLER_FRAME: Self = Self(4);
@@ -36,16 +38,23 @@ impl UnwindAction {
     pub const END_OF_STACK: Self = Self(16);
 }
 
-pub type UnwindExceptionCleanupFn = extern "C" fn(UnwindReasonCode, *mut UnwindException);
+impl ops::BitOr for UnwindAction {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
 
-pub type UnwindStopFn = extern "C" fn(
+pub type UnwindExceptionCleanupFn = unsafe extern "C" fn(UnwindReasonCode, *mut UnwindException);
+
+pub type UnwindStopFn = unsafe extern "C" fn(
     c_int,
     UnwindAction,
     u64,
     *mut UnwindException,
     *mut UnwindContext<'_>,
     *mut c_void,
-);
+) -> UnwindReasonCode;
 
 #[repr(C)]
 pub struct UnwindException {
@@ -54,10 +63,10 @@ pub struct UnwindException {
 }
 
 pub type UnwindTraceFn =
-    extern "C" fn(ctx: &mut UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode;
+    unsafe extern "C" fn(ctx: &mut UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode;
 
 pub struct UnwindContext<'a> {
-    frame: &'a Frame,
+    frame: Option<&'a Frame>,
     ctx: &'a mut Context,
 }
 
@@ -65,8 +74,8 @@ pub type PersonalityRoutine = extern "C" fn(
     c_int,
     UnwindAction,
     u64,
-    *mut UnwindException,
-    *mut UnwindContext<'_>,
+    &mut UnwindException,
+    &mut UnwindContext<'_>,
 ) -> UnwindReasonCode;
 
 #[no_mangle]
@@ -107,28 +116,38 @@ pub extern "C" fn _Unwind_SetIP(unwind_ctx: &mut UnwindContext<'_>, value: usize
 pub extern "C" fn _Unwind_GetLanguageSpecificData(
     unwind_ctx: &mut UnwindContext<'_>,
 ) -> *mut c_void {
-    unwind_ctx.frame.lsda() as *mut c_void
+    unwind_ctx
+        .frame
+        .map(|f| f.lsda() as *mut c_void)
+        .unwrap_or(ptr::null_mut())
 }
 
 #[no_mangle]
 pub extern "C" fn _Unwind_GetRegionStart(unwind_ctx: &mut UnwindContext<'_>) -> usize {
-    unwind_ctx.frame.initial_address()
+    unwind_ctx.frame.map(|f| f.initial_address()).unwrap_or(0)
 }
 
 #[no_mangle]
 pub extern "C" fn _Unwind_GetTextRelBase(unwind_ctx: &mut UnwindContext<'_>) -> usize {
-    unwind_ctx.frame.bases().eh_frame.text.unwrap() as _
+    unwind_ctx
+        .frame
+        .map(|f| f.bases().eh_frame.text.unwrap() as _)
+        .unwrap_or(0)
 }
 
 #[no_mangle]
 pub extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &mut UnwindContext<'_>) -> usize {
-    unwind_ctx.frame.bases().eh_frame.data.unwrap() as _
+    unwind_ctx
+        .frame
+        .map(|f| f.bases().eh_frame.data.unwrap() as _)
+        .unwrap_or(0)
 }
 
 #[no_mangle]
 pub extern "C" fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void {
-    match find_fde::get_finder().find_fde(pc as usize - 1) {
-        Some(v) => v.fde.initial_address() as usize as _,
-        None => ptr::null_mut(),
+    find_fde::get_finder()
+        .find_fde(pc as usize - 1)
+        .map(|r| r.fde.initial_address() as usize as _)
+        .unwrap_or(ptr::null_mut())
     }
 }

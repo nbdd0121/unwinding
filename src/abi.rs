@@ -10,7 +10,7 @@ use crate::util::*;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct UnwindReasonCode(c_int);
+pub struct UnwindReasonCode(pub c_int);
 
 #[allow(unused)]
 impl UnwindReasonCode {
@@ -27,7 +27,7 @@ impl UnwindReasonCode {
 
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct UnwindAction(c_int);
+pub struct UnwindAction(pub c_int);
 
 impl UnwindAction {
     pub const SEARCH_PHASE: Self = Self(1);
@@ -76,6 +76,19 @@ pub struct UnwindException {
     private_1: Option<UnwindStopFn>,
     private_2: usize,
     private_unused: [usize; Arch::UNWIND_PRIVATE_DATA_SIZE - 2],
+}
+
+impl UnwindException {
+    #[inline]
+    pub fn new() -> UnwindException {
+        UnwindException {
+            exception_class: 0,
+            exception_cleanup: None,
+            private_1: None,
+            private_2: 0,
+            private_unused: [0; Arch::UNWIND_PRIVATE_DATA_SIZE - 2],
+        }
+    }
 }
 
 pub type UnwindTraceFn =

@@ -3,26 +3,9 @@ use crate::util::get_unlimited_slice;
 use alloc::boxed::Box;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
+use core::ops;
 use core::ptr;
 use gimli::{BaseAddresses, EhFrame, NativeEndian, UnwindSection};
-
-#[cfg(feature = "std")]
-use once_cell::sync::Lazy;
-#[cfg(feature = "std")]
-use std::sync::Mutex;
-
-#[cfg(not(feature = "std"))]
-use spin::{Lazy, Mutex};
-
-#[cfg(feature = "std")]
-fn unwrap_guard<T, E: Debug>(x: Result<T, E>) -> T {
-    x.unwrap()
-}
-
-#[cfg(not(feature = "std"))]
-fn unwrap_guard<T>(x: T) -> T {
-    x
-}
 
 enum Table {
     Single(*const c_void),
@@ -36,30 +19,65 @@ struct Object {
     table: Table,
 }
 
-struct RegistryInner {
+struct GlobalState {
     object: *mut Object,
 }
 
-unsafe impl Send for RegistryInner {}
+unsafe impl Send for GlobalState {}
 
-pub struct Registry {
-    inner: Mutex<RegistryInner>,
+pub struct Registry(());
+
+// `unsafe` because there is no protection for reentrance.
+unsafe fn lock_global_state() -> impl ops::DerefMut<Target = GlobalState> {
+    #[cfg(feature = "libc")]
+    {
+        static mut MUTEX: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
+        unsafe { libc::pthread_mutex_lock(&mut MUTEX) };
+
+        static mut STATE: GlobalState = GlobalState {
+            object: ptr::null_mut(),
+        };
+
+        struct LockGuard;
+        impl Drop for LockGuard {
+            fn drop(&mut self) {
+                unsafe { libc::pthread_mutex_unlock(&mut MUTEX) };
+            }
+        }
+
+        impl ops::Deref for LockGuard {
+            type Target = GlobalState;
+            fn deref(&self) -> &GlobalState {
+                unsafe { &STATE }
+            }
+        }
+
+        impl ops::DerefMut for LockGuard {
+            fn deref_mut(&mut self) -> &mut GlobalState {
+                unsafe { &mut STATE }
+            }
+        }
+
+        LockGuard
+    }
+    #[cfg(not(feature = "libc"))]
+    {
+        static MUTEX: spin::Mutex<GlobalState> = spin::Mutex::new(GlobalState {
+            object: ptr::null_mut(),
+        });
+        MUTEX.lock()
+    }
 }
 
 pub fn get_finder() -> &'static Registry {
-    static LAZY: Lazy<Registry> = Lazy::new(|| Registry {
-        inner: Mutex::new(RegistryInner {
-            object: ptr::null_mut(),
-        }),
-    });
-    &*LAZY
+    &Registry(())
 }
 
 impl super::FDEFinder for Registry {
     fn find_fde(&self, pc: usize) -> Option<FDESearchResult> {
-        let guard = unwrap_guard(get_finder().inner.lock());
         unsafe {
-            let mut cur = guard.object;
+        let guard = lock_global_state();
+        let mut cur = guard.object;
 
             while !cur.is_null() {
                 let bases = BaseAddresses::default()
@@ -128,7 +146,7 @@ unsafe extern "C" fn __register_frame_info_bases(
             table: Table::Single(begin),
         });
 
-        let mut guard = unwrap_guard(get_finder().inner.lock());
+        let mut guard = lock_global_state();
         (*ob).next = guard.object;
         guard.object = ob;
     }
@@ -164,7 +182,7 @@ unsafe extern "C" fn __register_frame_info_table_bases(
             table: Table::Multiple(begin as _),
         });
 
-        let mut guard = unwrap_guard(get_finder().inner.lock());
+        let mut guard = lock_global_state();
         (*ob).next = guard.object;
         guard.object = ob;
     }
@@ -193,7 +211,7 @@ extern "C" fn __deregister_frame_info_bases(begin: *const c_void) -> *mut Object
         return core::ptr::null_mut();
     }
 
-    let mut guard = unwrap_guard(get_finder().inner.lock());
+    let mut guard = unsafe { lock_global_state() };
     unsafe {
         let mut prev = &mut guard.object;
         let mut cur = *prev;

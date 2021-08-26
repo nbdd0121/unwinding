@@ -3,7 +3,7 @@
 #![feature(asm)]
 #![warn(rust_2018_idioms)]
 #![warn(unsafe_op_in_unsafe_fn)]
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

@@ -7,11 +7,9 @@ edition = "2018"
 [dependencies]
 gimli = { version = "0.25.0", default-features = false, features = ["read"] }
 libc = { version = "0.2", optional = true }
-once_cell = { version = "1.8", optional = true }
-spin = { version = "0.9", default-features = false, features = ["lazy", "mutex", "spin_mutex"] }
+spin = { version = "0.9", default-features = false, features = ["mutex", "spin_mutex"] }
 
 [features]
-std = ["once_cell"]
 alloc = []
 fde-phdr = ["libc"]
 fde-registry = ["alloc"]

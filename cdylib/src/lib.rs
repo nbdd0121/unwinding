@@ -12,7 +12,7 @@ use core::alloc::{GlobalAlloc, Layout};
 use core::panic::PanicInfo;
 use core::{cmp, mem, ptr};
 use libc::c_int;
-use unwind::*;
+pub use unwind::*;
 
 pub struct System;
 

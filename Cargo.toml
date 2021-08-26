@@ -18,5 +18,10 @@ fde-phdr = ["libc"]
 fde-registry = ["alloc"]
 default = ["fde-phdr"]
 
+[profile.dev]
+# Must be turned on due to Rust bug https://github.com/rust-lang/rust/issues/50007
+lto = true
+
 [profile.release]
+lto = true
 debug = true

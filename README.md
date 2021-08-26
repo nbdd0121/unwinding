@@ -16,6 +16,7 @@ the unwinder:
 | unwinder     | Yes     | The primary feature gate to enable the unwinder |
 | fde-phdr     | Yes     | Use `dl_iterator_phdr` to retrieve frame unwind table. Depends on libc. |
 | fde-registry | Yes     | Provide `__register__frame` and others for dynamic registration |
+| fde-static   | No      | Use `__executable_start`, `__etext` and `__eh_frame` to retrieve frame unwind table. The former two symbols are usually provided by the linker, while the last one would need to be provided by the user via linker script.  |
 | dwarf-expr   | Yes     | Enable the dwarf expression evaluator. Usually not necessary for Rust |
 | hide-trace   | Yes     | Hide unwinder frames in back trace |
 
@@ -34,7 +35,7 @@ extern crate unwind;
 
 ## Personality and other utilities
 
-The library also provides Rust personality function. This can be handy if you are working on a `#![no_std]` binary/staticlib/cdylib and you still want unwinding support.
+The library also provides Rust personality function. This can work with the unwinder described above or with a different unwinder. This can be handy if you are working on a `#![no_std]` binary/staticlib/cdylib and you still want unwinding support.
 
 Here are the feature gates related:
 | Feature       | Default | Description |
@@ -46,6 +47,21 @@ Here are the feature gates related:
 | system-alloc  | No      | Provides a global allocator which calls `malloc` and friends. Provided for convience. |
 
 If you are writing a `#![no_std]` program, simply enable `personality`, `panic-handler` and `system-alloc` in addition to the defaults, you instantly obtains the ability to do unwinding! An example is given in [`example/`](example).
+
+## Baremetal
+
+To use this library for baremetal projects, disable default features and enable `unwinder`, `fde-static`, `personality`, `panic`. `dwarf-expr` and `hide-trace` are optional. Modify the linker script by
+```ld
+/* Inserting these two lines */
+. = ALIGN(8);
+PROVIDE(__eh_frame = .);
+/* before .eh_frame rule */
+.eh_frame : { KEEP (*(.eh_frame)) *(.eh_frame.*) }
+```
+
+And that's it! After you ensured that the global allocator is functional, you can use `unwind::panic::begin_panic` to initiate an unwing and catch using `unwind::panic::catch_unwind`, as if you have a `std`.
+
+If you have your own version of `thread_local` and `println!` working, you can port [`panic_handler.rs`](src/panic_handler.rs) for double-panic protection and stack traces!
 
 ## TODO
 

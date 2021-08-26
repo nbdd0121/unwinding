@@ -1,11 +1,28 @@
 use super::FDESearchResult;
 use crate::util::get_unlimited_slice;
+use alloc::boxed::Box;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use core::ptr;
 use gimli::{BaseAddresses, EhFrame, NativeEndian, UnwindSection};
+
+#[cfg(feature = "std")]
 use once_cell::sync::Lazy;
+#[cfg(feature = "std")]
 use std::sync::Mutex;
+
+#[cfg(not(feature = "std"))]
+use spin::{Lazy, Mutex};
+
+#[cfg(feature = "std")]
+fn unwrap_guard<T, E: Debug>(x: Result<T, E>) -> T {
+    x.unwrap()
+}
+
+#[cfg(not(feature = "std"))]
+fn unwrap_guard<T>(x: T) -> T {
+    x
+}
 
 enum Table {
     Single(*const c_void),
@@ -40,7 +57,7 @@ pub fn get_finder() -> &'static Registry {
 
 impl super::FDEFinder for Registry {
     fn find_fde(&self, pc: usize) -> Option<FDESearchResult> {
-        let guard = get_finder().inner.lock().unwrap();
+        let guard = unwrap_guard(get_finder().inner.lock());
         unsafe {
             let mut cur = guard.object;
 
@@ -111,7 +128,7 @@ unsafe extern "C" fn __register_frame_info_bases(
             table: Table::Single(begin),
         });
 
-        let mut guard = get_finder().inner.lock().unwrap();
+        let mut guard = unwrap_guard(get_finder().inner.lock());
         (*ob).next = guard.object;
         guard.object = ob;
     }
@@ -147,7 +164,7 @@ unsafe extern "C" fn __register_frame_info_table_bases(
             table: Table::Multiple(begin as _),
         });
 
-        let mut guard = get_finder().inner.lock().unwrap();
+        let mut guard = unwrap_guard(get_finder().inner.lock());
         (*ob).next = guard.object;
         guard.object = ob;
     }
@@ -176,7 +193,7 @@ extern "C" fn __deregister_frame_info_bases(begin: *const c_void) -> *mut Object
         return core::ptr::null_mut();
     }
 
-    let mut guard = get_finder().inner.lock().unwrap();
+    let mut guard = unwrap_guard(get_finder().inner.lock());
     unsafe {
         let mut prev = &mut guard.object;
         let mut cur = *prev;

@@ -60,7 +60,7 @@ impl UnwindAction {
 
 pub type UnwindExceptionCleanupFn = unsafe extern "C" fn(UnwindReasonCode, *mut UnwindException);
 
-pub type UnwindStopFn = unsafe extern "C" fn(
+pub type UnwindStopFn = extern "C" fn(
     c_int,
     UnwindAction,
     u64,
@@ -92,7 +92,7 @@ impl UnwindException {
 }
 
 pub type UnwindTraceFn =
-    unsafe extern "C" fn(ctx: &mut UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode;
+    extern "C" fn(ctx: &mut UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode;
 
 pub struct UnwindContext<'a> {
     frame: Option<&'a Frame>,
@@ -285,7 +285,7 @@ fn raise_exception_phase2(
 }
 
 #[no_mangle]
-pub unsafe extern "C-unwind" fn _Unwind_ForceUnwind(
+pub extern "C-unwind" fn _Unwind_ForceUnwind(
     exception: &mut UnwindException,
     stop: UnwindStopFn,
     stop_arg: *mut c_void,
@@ -295,14 +295,14 @@ pub unsafe extern "C-unwind" fn _Unwind_ForceUnwind(
     exception.private_1 = Some(stop);
     exception.private_2 = stop_arg as _;
 
-    let code = unsafe { force_unwind_phase2(exception, &mut ctx, stop, stop_arg) };
+    let code = force_unwind_phase2(exception, &mut ctx, stop, stop_arg);
     match code {
         UnwindReasonCode::INSTALL_CONTEXT => unsafe { restore_context(&ctx) },
         _ => code,
     }
 }
 
-unsafe fn force_unwind_phase2(
+fn force_unwind_phase2(
     exception: &mut UnwindException,
     ctx: &mut Context,
     stop: UnwindStopFn,
@@ -311,25 +311,23 @@ unsafe fn force_unwind_phase2(
     loop {
         let frame = try2!(Frame::from_context(ctx));
 
-        let code = unsafe {
-            stop(
-                1,
-                UnwindAction::FORCE_UNWIND
-                    | UnwindAction::END_OF_STACK
-                    | if frame.is_none() {
-                        UnwindAction::END_OF_STACK
-                    } else {
-                        UnwindAction::empty()
-                    },
-                exception.exception_class,
-                exception,
-                &mut UnwindContext {
-                    frame: frame.as_ref(),
-                    ctx,
+        let code = stop(
+            1,
+            UnwindAction::FORCE_UNWIND
+                | UnwindAction::END_OF_STACK
+                | if frame.is_none() {
+                    UnwindAction::END_OF_STACK
+                } else {
+                    UnwindAction::empty()
                 },
-                stop_arg,
-            )
-        };
+            exception.exception_class,
+            exception,
+            &mut UnwindContext {
+                frame: frame.as_ref(),
+                ctx,
+            },
+            stop_arg,
+        );
         match code {
             UnwindReasonCode::NO_REASON => (),
             _ => return UnwindReasonCode::FATAL_PHASE2_ERROR,
@@ -375,7 +373,7 @@ pub extern "C-unwind" fn _Unwind_Resume(exception: &mut UnwindException) -> ! {
         }
         Some(stop) => {
             let stop_arg = exception.private_2 as _;
-            unsafe { force_unwind_phase2(exception, &mut ctx, stop, stop_arg) }
+            force_unwind_phase2(exception, &mut ctx, stop, stop_arg)
         }
     };
     assert!(code == UnwindReasonCode::INSTALL_CONTEXT);
@@ -395,7 +393,7 @@ pub extern "C-unwind" fn _Unwind_Resume_or_Rethrow(
     let mut ctx = save_context();
 
     let stop_arg = exception.private_2 as _;
-    let code = unsafe { force_unwind_phase2(exception, &mut ctx, stop, stop_arg) };
+    let code = force_unwind_phase2(exception, &mut ctx, stop, stop_arg);
     assert!(code == UnwindReasonCode::INSTALL_CONTEXT);
 
     unsafe { restore_context(&ctx) }
@@ -408,8 +406,9 @@ pub unsafe extern "C" fn _Unwind_DeleteException(exception: *mut UnwindException
     }
 }
 
+#[inline(never)]
 #[no_mangle]
-pub unsafe extern "C-unwind" fn _Unwind_Backtrace(
+pub extern "C-unwind" fn _Unwind_Backtrace(
     trace: UnwindTraceFn,
     trace_argument: *mut c_void,
 ) -> UnwindReasonCode {
@@ -419,15 +418,13 @@ pub unsafe extern "C-unwind" fn _Unwind_Backtrace(
     loop {
         let frame = try1!(Frame::from_context(&ctx));
         if !skipping {
-            let code = unsafe {
-                trace(
-                    &mut UnwindContext {
-                        frame: frame.as_ref(),
-                        ctx: &mut ctx,
-                    },
-                    trace_argument,
-                )
-            };
+            let code = trace(
+                &mut UnwindContext {
+                    frame: frame.as_ref(),
+                    ctx: &mut ctx,
+                },
+                trace_argument,
+            );
             match code {
                 UnwindReasonCode::NO_REASON => (),
                 _ => return UnwindReasonCode::FATAL_PHASE1_ERROR,

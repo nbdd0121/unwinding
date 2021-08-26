@@ -76,8 +76,8 @@ pub fn get_finder() -> &'static Registry {
 impl super::FDEFinder for Registry {
     fn find_fde(&self, pc: usize) -> Option<FDESearchResult> {
         unsafe {
-        let guard = lock_global_state();
-        let mut cur = guard.object;
+            let guard = lock_global_state();
+            let mut cur = guard.object;
 
             while !cur.is_null() {
                 let bases = BaseAddresses::default()

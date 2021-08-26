@@ -1,0 +1,12 @@
+[package]
+name = "unwind_dyn"
+version = "0.1.0"
+authors = ["Gary Guo <gary@garyguo.net>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+unwind = { path = "../", features = ["fde-registry"] }
+libc = "0.2"

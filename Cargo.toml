@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Gary Guo <gary@garyguo.net>"]
 edition = "2018"
 
+[workspace]
+members = ["cdylib"]
+
 [dependencies]
 gimli = { version = "0.25.0", default-features = false, features = ["read"] }
 libc = { version = "0.2", optional = true }

@@ -25,6 +25,7 @@ pub struct UnwindException {
 pub struct UnwindContext<'a> {
     frame: Option<&'a Frame>,
     ctx: &'a mut Context,
+    signal: bool,
 }
 
 #[no_mangle]
@@ -52,7 +53,7 @@ pub extern "C" fn _Unwind_GetIPInfo(
     unwind_ctx: &UnwindContext<'_>,
     ip_before_insn: &mut c_int,
 ) -> usize {
-    *ip_before_insn = 0;
+    *ip_before_insn = unwind_ctx.signal as _;
     unwind_ctx.ctx[Arch::RA]
 }
 
@@ -124,8 +125,9 @@ pub extern "C-unwind" fn _Unwind_RaiseException(
 
     // Phase 1: Search for handler
     let mut ctx = saved_ctx.clone();
-    let handler_cfa = loop {
-        if let Some(frame) = try1!(Frame::from_context(&ctx)) {
+    let mut signal = false;
+    loop {
+        if let Some(frame) = try1!(Frame::from_context(&ctx, signal)) {
             if let Some(personality) = frame.personality() {
                 let result = personality(
                     1,
@@ -135,25 +137,30 @@ pub extern "C-unwind" fn _Unwind_RaiseException(
                     &mut UnwindContext {
                         frame: Some(&frame),
                         ctx: &mut ctx,
+                        signal,
                     },
                 );
 
                 match result {
                     UnwindReasonCode::CONTINUE_UNWIND => (),
                     UnwindReasonCode::HANDLER_FOUND => {
-                        exception.private_1 = None;
-                        exception.private_2 = ctx[Arch::SP];
-                        break ctx[Arch::SP];
+                        break;
                     }
                     _ => return UnwindReasonCode::FATAL_PHASE1_ERROR,
                 }
             }
 
             ctx = try1!(frame.unwind(&ctx));
+            signal = frame.is_signal_trampoline();
         } else {
             return UnwindReasonCode::END_OF_STACK;
         }
-    };
+    }
+
+    // Disambiguate normal frame and signal frame.
+    let handler_cfa = ctx[Arch::SP] - signal as usize;
+    exception.private_1 = None;
+    exception.private_2 = handler_cfa;
 
     let mut ctx = saved_ctx;
     let code = raise_exception_phase2(exception, &mut ctx, handler_cfa);
@@ -168,14 +175,15 @@ fn raise_exception_phase2(
     ctx: &mut Context,
     handler_cfa: usize,
 ) -> UnwindReasonCode {
+    let mut signal = false;
     loop {
-        if let Some(frame) = try2!(Frame::from_context(ctx)) {
-            let is_handler = ctx[Arch::SP] == handler_cfa;
+        if let Some(frame) = try2!(Frame::from_context(ctx, signal)) {
+            let frame_cfa = ctx[Arch::SP] - signal as usize;
             if let Some(personality) = frame.personality() {
                 let code = personality(
                     1,
                     UnwindAction::CLEANUP_PHASE
-                        | if is_handler {
+                        | if frame_cfa == handler_cfa {
                             UnwindAction::HANDLER_FRAME
                         } else {
                             UnwindAction::empty()
@@ -185,6 +193,7 @@ fn raise_exception_phase2(
                     &mut UnwindContext {
                         frame: Some(&frame),
                         ctx,
+                        signal,
                     },
                 );
 
@@ -196,6 +205,7 @@ fn raise_exception_phase2(
             }
 
             *ctx = try2!(frame.unwind(ctx));
+            signal = frame.is_signal_trampoline();
         } else {
             return UnwindReasonCode::FATAL_PHASE2_ERROR;
         }
@@ -228,8 +238,9 @@ fn force_unwind_phase2(
     stop: UnwindStopFn,
     stop_arg: *mut c_void,
 ) -> UnwindReasonCode {
+    let mut signal = false;
     loop {
-        let frame = try2!(Frame::from_context(ctx));
+        let frame = try2!(Frame::from_context(ctx, signal));
 
         let code = stop(
             1,
@@ -245,6 +256,7 @@ fn force_unwind_phase2(
             &mut UnwindContext {
                 frame: frame.as_ref(),
                 ctx,
+                signal,
             },
             stop_arg,
         );
@@ -263,6 +275,7 @@ fn force_unwind_phase2(
                     &mut UnwindContext {
                         frame: Some(&frame),
                         ctx,
+                        signal,
                     },
                 );
 
@@ -274,6 +287,7 @@ fn force_unwind_phase2(
             }
 
             *ctx = try2!(frame.unwind(ctx));
+            signal = frame.is_signal_trampoline();
         } else {
             return UnwindReasonCode::END_OF_STACK;
         }
@@ -333,15 +347,17 @@ pub extern "C-unwind" fn _Unwind_Backtrace(
     trace_argument: *mut c_void,
 ) -> UnwindReasonCode {
     let mut ctx = save_context();
+    let mut signal = false;
     let mut skipping = cfg!(feature = "hide-trace");
 
     loop {
-        let frame = try1!(Frame::from_context(&ctx));
+        let frame = try1!(Frame::from_context(&ctx, signal));
         if !skipping {
             let code = trace(
                 &mut UnwindContext {
                     frame: frame.as_ref(),
                     ctx: &mut ctx,
+                    signal,
                 },
                 trace_argument,
             );
@@ -357,6 +373,7 @@ pub extern "C-unwind" fn _Unwind_Backtrace(
                 }
             }
             ctx = try1!(frame.unwind(&ctx));
+            signal = frame.is_signal_trampoline();
         } else {
             return UnwindReasonCode::END_OF_STACK;
         }

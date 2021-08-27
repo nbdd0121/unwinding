@@ -17,7 +17,7 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn from_context(ctx: &Context) -> Result<Option<Self>, gimli::Error> {
+    pub fn from_context(ctx: &Context, signal: bool) -> Result<Option<Self>, gimli::Error> {
         let mut ra = ctx[Arch::RA];
 
         // Reached end of stack
@@ -26,7 +26,9 @@ impl Frame {
         }
 
         // RA points to the *next* instruction, so move it back 1 byte for the call instruction.
-        ra -= 1;
+        if !signal {
+            ra -= 1;
+        }
 
         let fde_result = match find_fde::get_finder().find_fde(ra as _) {
             Some(v) => v,
@@ -152,5 +154,9 @@ impl Frame {
 
     pub fn initial_address(&self) -> usize {
         self.fde_result.fde.initial_address() as _
+    }
+
+    pub fn is_signal_trampoline(&self) -> bool {
+        self.fde_result.fde.is_signal_trampoline()
     }
 }

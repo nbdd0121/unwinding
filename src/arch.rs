@@ -33,3 +33,21 @@ mod riscv {
 }
 #[cfg(any(target_arch = "riscv64", target_arch = "riscv32"))]
 pub use riscv::*;
+
+#[cfg(target_arch = "aarch64")]
+mod aarch64 {
+    use gimli::{AArch64, Register};
+
+    pub struct Arch;
+
+    #[allow(unused)]
+    impl Arch {
+        pub const SP: Register = AArch64::SP;
+        pub const RA: Register = AArch64::X30;
+
+        pub const UNWIND_DATA_REG: (Register, Register) = (AArch64::X0, AArch64::X1);
+        pub const UNWIND_PRIVATE_DATA_SIZE: usize = 2;
+    }
+}
+#[cfg(target_arch = "aarch64")]
+pub use aarch64::*;

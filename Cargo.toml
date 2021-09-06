@@ -12,6 +12,9 @@ gimli = { version = "0.25.0", default-features = false, features = ["read"] }
 libc = { version = "0.2", optional = true }
 spin = { version = "0.9", default-features = false, features = ["mutex", "spin_mutex"] }
 
+[patch.crates-io]
+gimli = { git = "https://github.com/gimli-rs/gimli.git" }
+
 [features]
 alloc = []
 unwinder = []

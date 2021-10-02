@@ -1,5 +1,7 @@
 #[cfg(feature = "fde-static")]
 mod fixed;
+#[cfg(feature = "fde-gnu-eh-frame-hdr")]
+mod gnu_eh_frame_hdr;
 #[cfg(feature = "fde-phdr")]
 mod phdr;
 #[cfg(feature = "fde-registry")]
@@ -33,6 +35,10 @@ impl FDEFinder for GlobalFinder {
         }
         #[cfg(feature = "fde-static")]
         if let Some(v) = fixed::get_finder().find_fde(pc) {
+            return Some(v);
+        }
+        #[cfg(feature = "fde-gnu-eh-frame-hdr")]
+        if let Some(v) = gnu_eh_frame_hdr::get_finder().find_fde(pc) {
             return Some(v);
         }
         None

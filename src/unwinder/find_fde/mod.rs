@@ -29,16 +29,16 @@ impl FDEFinder for GlobalFinder {
         if let Some(v) = registry::get_finder().find_fde(pc) {
             return Some(v);
         }
+        #[cfg(feature = "fde-gnu-eh-frame-hdr")]
+        if let Some(v) = gnu_eh_frame_hdr::get_finder().find_fde(pc) {
+            return Some(v);
+        }
         #[cfg(feature = "fde-phdr")]
         if let Some(v) = phdr::get_finder().find_fde(pc) {
             return Some(v);
         }
         #[cfg(feature = "fde-static")]
         if let Some(v) = fixed::get_finder().find_fde(pc) {
-            return Some(v);
-        }
-        #[cfg(feature = "fde-gnu-eh-frame-hdr")]
-        if let Some(v) = gnu_eh_frame_hdr::get_finder().find_fde(pc) {
             return Some(v);
         }
         None

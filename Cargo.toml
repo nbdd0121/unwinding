@@ -10,7 +10,7 @@ members = ["cdylib", "example"]
 [dependencies]
 gimli = { version = "0.25.0", default-features = false, features = ["read"] }
 libc = { version = "0.2", optional = true }
-spin = { version = "0.9", default-features = false, features = ["mutex", "spin_mutex"] }
+spin = { version = "0.9", optional = true, default-features = false, features = ["mutex", "spin_mutex"] }
 
 [patch.crates-io]
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
@@ -31,7 +31,7 @@ panic = ["alloc"]
 panic-handler = ["print", "panic"]
 panic-handler-dummy = []
 system-alloc = []
-default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr", "fde-registry"]
+default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr", "fde-registry", "spin"]
 
 [profile.dev]
 # Must be turned on due to Rust bug https://github.com/rust-lang/rust/issues/50007

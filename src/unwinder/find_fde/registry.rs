@@ -67,6 +67,8 @@ unsafe fn lock_global_state() -> impl ops::DerefMut<Target = GlobalState> {
         });
         MUTEX.lock()
     }
+    #[cfg(not(any(feature = "libc", feature = "spin")))]
+    compile_error!("Either feature \"libc\" or \"spin\" must be enabled to use \"fde-registry\".");
 }
 
 pub fn get_finder() -> &'static Registry {

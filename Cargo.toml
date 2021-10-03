@@ -31,7 +31,7 @@ panic = ["alloc"]
 panic-handler = ["print", "panic"]
 panic-handler-dummy = []
 system-alloc = []
-default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr", "fde-registry", "spin"]
+default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr", "fde-registry"]
 
 [profile.dev]
 # Must be turned on due to Rust bug https://github.com/rust-lang/rust/issues/50007

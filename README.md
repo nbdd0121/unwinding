@@ -11,14 +11,15 @@ Currently supports x86_64 and RV64.
 
 The unwinder can be enabled with `unwinder` feature. Here are the feature gates related to
 the unwinder:
-| Feature      | Default | Description |
-|--------------|---------|-|
-| unwinder     | Yes     | The primary feature gate to enable the unwinder |
-| fde-phdr     | Yes     | Use `dl_iterator_phdr` to retrieve frame unwind table. Depends on libc. |
-| fde-registry | Yes     | Provide `__register__frame` and others for dynamic registration |
-| fde-static   | No      | Use `__executable_start`, `__etext` and `__eh_frame` to retrieve frame unwind table. The former two symbols are usually provided by the linker, while the last one would need to be provided by the user via linker script.  |
-| dwarf-expr   | Yes     | Enable the dwarf expression evaluator. Usually not necessary for Rust |
-| hide-trace   | Yes     | Hide unwinder frames in back trace |
+| Feature              | Default | Description |
+|--------------------- |---------|-|
+| unwinder             | Yes     | The primary feature gate to enable the unwinder |
+| fde-phdr             | Yes     | Use `dl_iterator_phdr` to retrieve frame unwind table. Depends on libc. |
+| fde-registry         | Yes     | Provide `__register__frame` and others for dynamic registration. Requires either `libc` or `spin` for a mutex implementation. |
+| fde-gnu-eh-frame-hdr | No      | Use `__executable_start`, `__etext` and `__GNU_EH_FRAME_HDR` to retrieve frame unwind table. The former two symbols are usually provided by the linker, while the last one is provided if GNU LD is used and --eh-frame-hdr option is enabled. |
+| fde-static           | No      | Use `__executable_start`, `__etext` and `__eh_frame` to retrieve frame unwind table. The former two symbols are usually provided by the linker, while the last one would need to be provided by the user via linker script.  |
+| dwarf-expr           | Yes     | Enable the dwarf expression evaluator. Usually not necessary for Rust |
+| hide-trace           | Yes     | Hide unwinder frames in back trace |
 
 If you want to use the unwinder for other Rust (C++, or any programs that utilize the unwinder), you can build the [`unwind_dyn`](cdylib) crate provided, and use `LD_PRELOAD` to replace the system unwinder with it.
 ```sh

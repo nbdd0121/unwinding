@@ -37,9 +37,12 @@ system-alloc = []
 default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr-dl", "fde-registry"]
 
 [profile.dev]
-# Must be turned on due to Rust bug https://github.com/rust-lang/rust/issues/50007
+# Must be turned on for cdylib due to Rust bug https://github.com/rust-lang/rust/issues/50007
 lto = true
 
 [profile.release]
 lto = true
 debug = true
+
+[package.metadata.docs.rs]
+features = ["panic-handler"]

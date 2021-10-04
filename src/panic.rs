@@ -4,7 +4,7 @@ use core::mem::MaybeUninit;
 
 use crate::abi::*;
 #[cfg(feature = "panic-handler")]
-use crate::panic_handler::*;
+pub use crate::panic_handler::*;
 use crate::panicking::Exception;
 
 #[repr(transparent)]

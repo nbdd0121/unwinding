@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![feature(c_unwind)]
 #![feature(naked_functions)]
 #![feature(asm)]
@@ -39,9 +40,9 @@ pub mod panic;
 pub mod panicking;
 
 #[cfg(feature = "panic-handler")]
-pub mod panic_handler;
+mod panic_handler;
 #[cfg(feature = "panic-handler-dummy")]
-pub mod panic_handler_dummy;
+mod panic_handler_dummy;
 
 #[cfg(feature = "system-alloc")]
 mod system_alloc;

@@ -9,8 +9,8 @@ Currently supports x86_64 and RV64.
 
 ## Unwinder
 
-The unwinder can be enabled with `unwinder` feature. Here are the feature gates related to
-the unwinder:
+The unwinder can be enabled with `unwinder` feature. Here are the feature gates related to the unwinder:
+
 | Feature              | Default | Description |
 |--------------------- |---------|-|
 | unwinder             | Yes     | The primary feature gate to enable the unwinder |
@@ -40,6 +40,7 @@ extern crate unwind;
 The library also provides Rust personality function. This can work with the unwinder described above or with a different unwinder. This can be handy if you are working on a `#![no_std]` binary/staticlib/cdylib and you still want unwinding support.
 
 Here are the feature gates related:
+
 | Feature       | Default | Description |
 |---------------|---------|-|
 | personality   | No      | Provides `#[lang = eh_personality]` |
@@ -49,7 +50,7 @@ Here are the feature gates related:
 | panic-handler | No      | Provides `#[panic_handler]`. Provides similar behaviour on panic to std, with `RUST_BACKTRACE` support as well. Stack trace won't have symbols though. Depends on libc. |
 | system-alloc  | No      | Provides a global allocator which calls `malloc` and friends. Provided for convience. |
 
-If you are writing a `#![no_std]` program, simply enable `personality`, `panic-handler` and `system-alloc` in addition to the defaults, you instantly obtains the ability to do unwinding! An example is given in [`example/`](example).
+If you are writing a `#![no_std]` program, simply enable `personality`, `panic-handler` and `system-alloc` in addition to the defaults, you instantly obtains the ability to do unwinding! An example is given in the [`example/` folder](example).
 
 ## Baremetal
 
@@ -63,6 +64,8 @@ PROVIDE(__eh_frame = .);
 ```
 
 And that's it! After you ensured that the global allocator is functional, you can use `unwind::panic::begin_panic` to initiate an unwing and catch using `unwind::panic::catch_unwind`, as if you have a `std`.
+
+If your linker supports `--eh-frame-hdr` you can also try to use `fde-gnu-eh-frame-hdr` instead of `fde-static`. GNU LD will provides a `__GNU_EH_FRAME_HDR` magic symbol so you don't have to provide `__eh_frame` through linker script.
 
 If you have your own version of `thread_local` and `println!` working, you can port [`panic_handler.rs`](src/panic_handler.rs) for double-panic protection and stack traces!
 

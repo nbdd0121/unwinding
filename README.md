@@ -14,7 +14,8 @@ the unwinder:
 | Feature              | Default | Description |
 |--------------------- |---------|-|
 | unwinder             | Yes     | The primary feature gate to enable the unwinder |
-| fde-phdr             | Yes     | Use `dl_iterator_phdr` to retrieve frame unwind table. Depends on libc. |
+| fde-phdr-dl          | Yes     | Use `dl_iterator_phdr` to retrieve frame unwind table. Depends on libc. |
+| fde-phdr-aux         | No      | Use ELF auxiliary vector to retrieve frame unwind table. Depends on libc. |
 | fde-registry         | Yes     | Provide `__register__frame` and others for dynamic registration. Requires either `libc` or `spin` for a mutex implementation. |
 | fde-gnu-eh-frame-hdr | No      | Use `__executable_start`, `__etext` and `__GNU_EH_FRAME_HDR` to retrieve frame unwind table. The former two symbols are usually provided by the linker, while the last one is provided if GNU LD is used and --eh-frame-hdr option is enabled. |
 | fde-static           | No      | Use `__executable_start`, `__etext` and `__eh_frame` to retrieve frame unwind table. The former two symbols are usually provided by the linker, while the last one would need to be provided by the user via linker script.  |

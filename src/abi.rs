@@ -75,13 +75,6 @@ pub struct UnwindException {
     private: [usize; Arch::UNWIND_PRIVATE_DATA_SIZE],
 }
 
-impl UnwindException {
-    #[inline]
-    pub fn new() -> UnwindException {
-        unsafe { core::mem::zeroed() }
-    }
-}
-
 pub type UnwindTraceFn =
     extern "C" fn(ctx: &mut UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode;
 

@@ -44,7 +44,8 @@ Here are the feature gates related:
 |---------------|---------|-|
 | personality   | No      | Provides `#[lang = eh_personality]` |
 | print         | No      | Provides `(e)?print(ln)?`. This is really only here because panic handler needs to provide things. Depends on libc. |
-| panic         | No      | Provides `begin_panic` and `catch_unwind`. Only stack unwinding functionality is provided and no printing is done, because this feature does not depend on libc. |
+| panicking     | No      | Provides a generic `begin_panic` and `catch_unwind`. Only stack unwinding functionality is provided, memory allocation and panic handling is left to the user. |
+| panic         | No      | Provides Rust `begin_panic` and `catch_unwind`. Only stack unwinding functionality is provided and no printing is done, because this feature does not depend on libc. |
 | panic-handler | No      | Provides `#[panic_handler]`. Provides similar behaviour on panic to std, with `RUST_BACKTRACE` support as well. Stack trace won't have symbols though. Depends on libc. |
 | system-alloc  | No      | Provides a global allocator which calls `malloc` and friends. Provided for convience. |
 

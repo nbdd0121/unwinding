@@ -6,7 +6,7 @@
     feature(lang_items)
 )]
 #![cfg_attr(
-    any(feature = "panic", feature = "panic-handler-dummy"),
+    any(feature = "panicking", feature = "panic-handler-dummy"),
     feature(core_intrinsics)
 )]
 #![cfg_attr(feature = "panic-handler", feature(thread_local))]
@@ -35,6 +35,8 @@ mod personality_dummy;
 
 #[cfg(feature = "panic")]
 pub mod panic;
+#[cfg(feature = "panicking")]
+pub mod panicking;
 
 #[cfg(feature = "panic-handler")]
 pub mod panic_handler;

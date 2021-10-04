@@ -19,6 +19,8 @@ gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 alloc = []
 unwinder = []
 fde-phdr = ["libc"]
+fde-phdr-dl = ["fde-phdr"]
+fde-phdr-aux = ["fde-phdr"]
 fde-registry = ["alloc"]
 fde-static = []
 fde-gnu-eh-frame-hdr = []
@@ -31,7 +33,7 @@ panic = ["alloc"]
 panic-handler = ["print", "panic"]
 panic-handler-dummy = []
 system-alloc = []
-default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr", "fde-registry"]
+default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr-dl", "fde-registry"]
 
 [profile.dev]
 # Must be turned on due to Rust bug https://github.com/rust-lang/rust/issues/50007

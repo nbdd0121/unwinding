@@ -3,10 +3,10 @@
 #![feature(default_alloc_error_handler)]
 
 extern crate alloc;
-extern crate unwind;
+extern crate unwinding;
 
 use alloc::{borrow::ToOwned, string::String};
-use unwind::print::*;
+use unwinding::print::*;
 
 #[link(name = "c")]
 extern "C" {}
@@ -37,7 +37,7 @@ fn bar() {
 }
 
 fn main() {
-    let _ = unwind::panic::catch_unwind(|| {
+    let _ = unwinding::panic::catch_unwind(|| {
         bar();
         println!("done");
     });
@@ -48,7 +48,7 @@ fn main() {
 
 #[start]
 fn start(_argc: isize, _argv: *const *const u8) -> isize {
-    unwind::panic::catch_unwind(|| {
+    unwinding::panic::catch_unwind(|| {
         main();
         0
     })

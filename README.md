@@ -22,17 +22,17 @@ The unwinder can be enabled with `unwinder` feature. Here are the feature gates 
 | dwarf-expr           | Yes     | Enable the dwarf expression evaluator. Usually not necessary for Rust |
 | hide-trace           | Yes     | Hide unwinder frames in back trace |
 
-If you want to use the unwinder for other Rust (C++, or any programs that utilize the unwinder), you can build the [`unwind_dyn`](cdylib) crate provided, and use `LD_PRELOAD` to replace the system unwinder with it.
+If you want to use the unwinder for other Rust (C++, or any programs that utilize the unwinder), you can build the [`unwinding_dyn`](cdylib) crate provided, and use `LD_PRELOAD` to replace the system unwinder with it.
 ```sh
 cd cdylib
 cargo build --release
 # Test the unwinder using rustc. Why not :)
-LD_PRELOAD=`../target/release/libunwind_dyn.so` rustc +nightly -Ztreat-err-as-bug
+LD_PRELOAD=`../target/release/libunwinding_dyn.so` rustc +nightly -Ztreat-err-as-bug
 ```
 
 If you want to link to the unwinder in a Rust binary, simply add
 ```rust
-extern crate unwind;
+extern crate unwinding;
 ```
 
 ## Personality and other utilities
@@ -44,7 +44,7 @@ Here are the feature gates related:
 | Feature       | Default | Description |
 |---------------|---------|-|
 | personality   | No      | Provides `#[lang = eh_personality]` |
-| print         | No      | Provides `(e)?print(ln)?`. This is really only here because panic handler needs to provide things. Depends on libc. |
+| print         | No      | Provides `(e)?print(ln)?`. This is really only here because panic handler needs to print things. Depends on libc. |
 | panicking     | No      | Provides a generic `begin_panic` and `catch_unwind`. Only stack unwinding functionality is provided, memory allocation and panic handling is left to the user. |
 | panic         | No      | Provides Rust `begin_panic` and `catch_unwind`. Only stack unwinding functionality is provided and no printing is done, because this feature does not depend on libc. |
 | panic-handler | No      | Provides `#[panic_handler]`. Provides similar behaviour on panic to std, with `RUST_BACKTRACE` support as well. Stack trace won't have symbols though. Depends on libc. |
@@ -63,7 +63,7 @@ PROVIDE(__eh_frame = .);
 .eh_frame : { KEEP (*(.eh_frame)) *(.eh_frame.*) }
 ```
 
-And that's it! After you ensured that the global allocator is functional, you can use `unwind::panic::begin_panic` to initiate an unwing and catch using `unwind::panic::catch_unwind`, as if you have a `std`.
+And that's it! After you ensured that the global allocator is functional, you can use `unwinding::panic::begin_panic` to initiate an unwing and catch using `unwinding::panic::catch_unwind`, as if you have a `std`.
 
 If your linker supports `--eh-frame-hdr` you can also try to use `fde-gnu-eh-frame-hdr` instead of `fde-static`. GNU LD will provides a `__GNU_EH_FRAME_HDR` magic symbol so you don't have to provide `__eh_frame` through linker script.
 
@@ -71,5 +71,4 @@ If you have your own version of `thread_local` and `println!` working, you can p
 
 ## TODO
 
-* A better project name!
 * Remove dependencies on `alloc`.

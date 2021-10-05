@@ -5,4 +5,4 @@
 
 // Keep this explicit
 #[allow(unused_extern_crates)]
-extern crate unwind;
+extern crate unwinding;

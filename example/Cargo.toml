@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-unwind = { path = "../", features = ["system-alloc", "personality", "panic-handler"] }
+unwinding = { path = "../", features = ["system-alloc", "personality", "panic-handler"] }
 libc = "0.2"

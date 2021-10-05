@@ -117,6 +117,7 @@ macro_rules! try2 {
     }};
 }
 
+#[inline(never)]
 #[no_mangle]
 pub extern "C-unwind" fn _Unwind_RaiseException(
     exception: &mut UnwindException,
@@ -214,6 +215,7 @@ fn raise_exception_phase2(
     UnwindReasonCode::INSTALL_CONTEXT
 }
 
+#[inline(never)]
 #[no_mangle]
 pub extern "C-unwind" fn _Unwind_ForceUnwind(
     exception: &mut UnwindException,
@@ -296,6 +298,7 @@ fn force_unwind_phase2(
     UnwindReasonCode::INSTALL_CONTEXT
 }
 
+#[inline(never)]
 #[no_mangle]
 pub extern "C-unwind" fn _Unwind_Resume(exception: &mut UnwindException) -> ! {
     let mut ctx = save_context();
@@ -315,6 +318,7 @@ pub extern "C-unwind" fn _Unwind_Resume(exception: &mut UnwindException) -> ! {
     unsafe { restore_context(&ctx) }
 }
 
+#[inline(never)]
 #[no_mangle]
 pub extern "C-unwind" fn _Unwind_Resume_or_Rethrow(
     exception: &mut UnwindException,

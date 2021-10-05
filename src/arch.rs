@@ -16,6 +16,24 @@ mod x86_64 {
 #[cfg(target_arch = "x86_64")]
 pub use x86_64::*;
 
+#[cfg(target_arch = "x86")]
+mod x86 {
+    use gimli::{Register, X86};
+
+    pub struct Arch;
+
+    #[allow(unused)]
+    impl Arch {
+        pub const SP: Register = X86::ESP;
+        pub const RA: Register = X86::RA;
+
+        pub const UNWIND_DATA_REG: (Register, Register) = (X86::EAX, X86::EDX);
+        pub const UNWIND_PRIVATE_DATA_SIZE: usize = 5;
+    }
+}
+#[cfg(target_arch = "x86")]
+pub use x86::*;
+
 #[cfg(any(target_arch = "riscv64", target_arch = "riscv32"))]
 mod riscv {
     use gimli::{Register, RiscV};
@@ -54,6 +72,7 @@ pub use aarch64::*;
 
 #[cfg(not(any(
     target_arch = "x86_64",
+    target_arch = "x86",
     target_arch = "riscv64",
     target_arch = "riscv32",
     target_arch = "aarch64"

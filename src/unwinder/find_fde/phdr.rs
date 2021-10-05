@@ -1,7 +1,6 @@
 use super::FDESearchResult;
 use crate::util::*;
 
-use core::ffi::c_void;
 use core::mem;
 use core::slice;
 use gimli::{BaseAddresses, EhFrame, EhFrameHdr, NativeEndian, UnwindSection};
@@ -49,6 +48,7 @@ fn search_aux_phdr(pc: usize) -> Option<FDESearchResult> {
 
 #[cfg(feature = "fde-phdr-dl")]
 fn search_dl_phdr(pc: usize) -> Option<FDESearchResult> {
+    use core::ffi::c_void;
     use libc::{dl_iterate_phdr, dl_phdr_info};
 
     struct CallbackData {

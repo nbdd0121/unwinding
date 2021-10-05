@@ -3,6 +3,8 @@ use core::ops;
 
 use crate::util::*;
 
+#[cfg(not(feature = "unwinder"))]
+use crate::arch::Arch;
 #[cfg(feature = "unwinder")]
 pub use crate::unwinder::*;
 

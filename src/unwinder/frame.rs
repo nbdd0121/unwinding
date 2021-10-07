@@ -1,6 +1,5 @@
-use gimli::{
-    BaseAddresses, CfaRule, Expression, RegisterRule, UninitializedUnwindContext, UnwindTableRow,
-};
+use alloc::boxed::Box;
+use gimli::{BaseAddresses, CfaRule, Expression, RegisterRule, UnwindContext, UnwindTableRow};
 #[cfg(feature = "dwarf-expr")]
 use gimli::{EvaluationResult, Location, Value};
 
@@ -34,7 +33,7 @@ impl Frame {
             Some(v) => v,
             None => return Ok(None),
         };
-        let mut unwinder = UninitializedUnwindContext::new();
+        let mut unwinder = UnwindContext::new();
         let row = fde_result
             .fde
             .unwind_info_for_address(

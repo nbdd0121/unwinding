@@ -1,6 +1,10 @@
 Unwinding library in Rust and for Rust
 ======================================
 
+[![crates.io](https://img.shields.io/crates/v/unwinding.svg)](https://crates.io/crates/unwinding)
+[![docs.rs](https://docs.rs/unwinding/badge.svg)](https://docs.rs/unwinding)
+[![license](https://img.shields.io/crates/l/unwinding.svg)](https://crates.io/crates/unwinding)
+
 This library serves two purposes:
 1. Provide a pure Rust alternative to libgcc_eh or libunwind.
 2. Provide easier unwinding support for `#![no_std]` targets.

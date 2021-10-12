@@ -16,7 +16,7 @@ libc = { version = "0.2", optional = true }
 spin = { version = "0.9", optional = true, default-features = false, features = ["mutex", "spin_mutex"] }
 
 [patch.crates-io]
-gimli = { git = "https://github.com/gimli-rs/gimli.git" }
+gimli = { git = "https://github.com/gimli-rs/gimli.git", rev = "80010ee0442ecd7d0916b0a36cc2d4267fc09dc8" }
 
 [features]
 alloc = []

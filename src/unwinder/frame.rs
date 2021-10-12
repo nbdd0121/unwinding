@@ -1,7 +1,8 @@
-use alloc::boxed::Box;
-use gimli::{BaseAddresses, CfaRule, Expression, RegisterRule, UnwindContext, UnwindTableRow};
+use gimli::{
+    BaseAddresses, CfaRule, Expression, Register, RegisterRule, UnwindContext, UnwindTableRow,
+};
 #[cfg(feature = "dwarf-expr")]
-use gimli::{EvaluationResult, Location, Value};
+use gimli::{Evaluation, EvaluationResult, Location, Value};
 
 use super::arch::*;
 use super::find_fde::{self, FDEFinder, FDESearchResult};
@@ -9,10 +10,24 @@ use crate::abi::PersonalityRoutine;
 use crate::arch::*;
 use crate::util::*;
 
+struct StoreOnStack;
+
+impl<R: gimli::Reader> gimli::UnwindContextStorage<R> for StoreOnStack {
+    type Rules = [(Register, RegisterRule<R>); 192];
+    type Stack = [UnwindTableRow<R, Self>; 1];
+}
+
+#[cfg(feature = "dwarf-expr")]
+impl<R: gimli::Reader> gimli::EvaluationStorage<R> for StoreOnStack {
+    type Stack = [Value; 64];
+    type ExpressionStack = [(R, R); 0];
+    type Result = [gimli::Piece<R>; 1];
+}
+
 #[derive(Debug)]
 pub struct Frame {
     fde_result: FDESearchResult,
-    row: UnwindTableRow<StaticSlice>,
+    row: UnwindTableRow<StaticSlice, StoreOnStack>,
 }
 
 impl Frame {
@@ -33,7 +48,7 @@ impl Frame {
             Some(v) => v,
             None => return Ok(None),
         };
-        let mut unwinder = UnwindContext::new();
+        let mut unwinder = UnwindContext::<_, StoreOnStack>::new_in();
         let row = fde_result
             .fde
             .unwind_info_for_address(
@@ -53,7 +68,8 @@ impl Frame {
         ctx: &Context,
         expr: Expression<StaticSlice>,
     ) -> Result<usize, gimli::Error> {
-        let mut eval = expr.evaluation(self.fde_result.fde.cie().encoding());
+        let mut eval =
+            Evaluation::<_, StoreOnStack>::new_in(expr.0, self.fde_result.fde.cie().encoding());
         let mut result = eval.evaluate()?;
         loop {
             match result {
@@ -76,8 +92,8 @@ impl Frame {
 
         Ok(
             match eval
-                .result()
-                .pop()
+                .as_result()
+                .last()
                 .ok_or(gimli::Error::PopWithEmptyStack)?
                 .location
             {

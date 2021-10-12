@@ -60,7 +60,10 @@ pub fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
                 core::intrinsics::abort();
             }
             Some(e) => {
-                panic_caught();
+                #[cfg(feature = "panic-handler")]
+                {
+                    panic_caught();
+                }
                 core::mem::forget(e.1);
                 e.0
             }

@@ -12,8 +12,21 @@ use crate::util::*;
 
 struct StoreOnStack;
 
+// gimli's MSRV doesn't allow const generics, so we need to pick a supported array size.
+const fn next_value(x: usize) -> usize {
+    let supported = [0, 1, 2, 3, 4, 8, 16, 32, 64, 128];
+    let mut i = 0;
+    while i < supported.len() {
+        if supported[i] >= x {
+            return supported[i];
+        }
+        i += 1;
+    }
+    192
+}
+
 impl<R: gimli::Reader> gimli::UnwindContextStorage<R> for StoreOnStack {
-    type Rules = [(Register, RegisterRule<R>); 192];
+    type Rules = [(Register, RegisterRule<R>); next_value(MAX_REG_RULES)];
     type Stack = [UnwindTableRow<R, Self>; 1];
 }
 

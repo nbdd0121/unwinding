@@ -2,6 +2,9 @@ use core::fmt;
 use core::ops;
 use gimli::{Register, RiscV};
 
+// Match DWARF_FRAME_REGISTERS in libgcc
+pub const MAX_REG_RULES: usize = 65;
+
 #[repr(C)]
 #[derive(Clone, Default)]
 pub struct Context {

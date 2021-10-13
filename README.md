@@ -72,7 +72,3 @@ And that's it! After you ensured that the global allocator is functional, you ca
 If your linker supports `--eh-frame-hdr` you can also try to use `fde-gnu-eh-frame-hdr` instead of `fde-static`. GNU LD will provides a `__GNU_EH_FRAME_HDR` magic symbol so you don't have to provide `__eh_frame` through linker script.
 
 If you have your own version of `thread_local` and `println!` working, you can port [`panic_handler.rs`](src/panic_handler.rs) for double-panic protection and stack traces!
-
-## TODO
-
-* Remove dependencies on `alloc`.

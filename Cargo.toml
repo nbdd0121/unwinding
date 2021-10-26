@@ -1,6 +1,6 @@
 [package]
 name = "unwinding"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Gary Guo <gary@garyguo.net>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -11,12 +11,9 @@ repository = "https://github.com/nbdd0121/unwinding/"
 members = ["cdylib", "example"]
 
 [dependencies]
-gimli = { version = "0.25.0", default-features = false, features = ["read-core"] }
+gimli = { version = "0.26.0", default-features = false, features = ["read-core"] }
 libc = { version = "0.2", optional = true }
 spin = { version = "0.9", optional = true, default-features = false, features = ["mutex", "spin_mutex"] }
-
-[patch.crates-io]
-gimli = { git = "https://github.com/gimli-rs/gimli.git", rev = "7a3aeef78d169b39e15e18f1573492c501b25c68" }
 
 [features]
 alloc = []

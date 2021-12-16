@@ -1,3 +1,4 @@
+use core::arch::asm;
 use core::fmt;
 use core::ops;
 use gimli::{Register, X86};

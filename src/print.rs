@@ -30,7 +30,7 @@ macro_rules! println {
 macro_rules! print {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
-        let _ = core::writeln!($crate::print::StdoutPrinter, $($arg)*);
+        let _ = core::write!($crate::print::StdoutPrinter, $($arg)*);
     })
 }
 
@@ -46,6 +46,6 @@ macro_rules! eprintln {
 macro_rules! eprint {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
-        let _ = core::writeln!($crate::print::StderrPrinter, $($arg)*);
+        let _ = core::write!($crate::print::StderrPrinter, $($arg)*);
     })
 }

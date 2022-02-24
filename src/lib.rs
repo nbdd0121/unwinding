@@ -1,7 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![feature(c_unwind)]
 #![feature(naked_functions)]
-#![feature(asm)]
 #![cfg_attr(
     any(feature = "personality", feature = "personality-dummy"),
     feature(lang_items)

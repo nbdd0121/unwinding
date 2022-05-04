@@ -11,7 +11,7 @@ repository = "https://github.com/nbdd0121/unwinding/"
 members = ["cdylib", "example"]
 
 [dependencies]
-gimli = { version = "0.26.0", default-features = false, features = ["read-core"] }
+gimli = { version = "0.26.1", default-features = false, features = ["read-core"] }
 libc = { version = "0.2", optional = true }
 spin = { version = "0.9", optional = true, default-features = false, features = ["mutex", "spin_mutex"] }
 
@@ -36,12 +36,7 @@ panic-handler-dummy = []
 system-alloc = []
 default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr-dl", "fde-registry"]
 
-[profile.dev]
-# Must be turned on for cdylib due to Rust bug https://github.com/rust-lang/rust/issues/50007
-lto = true
-
 [profile.release]
-lto = true
 debug = true
 
 [package.metadata.docs.rs]

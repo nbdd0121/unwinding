@@ -8,15 +8,15 @@ pub use crate::panic_handler::*;
 use crate::panicking::Exception;
 
 #[repr(transparent)]
-struct RustPanic(Box<dyn Any + Send>, ForeignGuard);
+struct RustPanic(Box<dyn Any + Send>, DropGuard);
 
-struct ForeignGuard;
+struct DropGuard;
 
-impl Drop for ForeignGuard {
+impl Drop for DropGuard {
     fn drop(&mut self) {
         #[cfg(feature = "panic-handler")]
         {
-            foreign_exception();
+            drop_panic();
         }
         core::intrinsics::abort();
     }
@@ -45,7 +45,7 @@ unsafe impl Exception for RustPanic {
 }
 
 pub fn begin_panic(payload: Box<dyn Any + Send>) -> UnwindReasonCode {
-    crate::panicking::begin_panic(RustPanic(payload, ForeignGuard))
+    crate::panicking::begin_panic(RustPanic(payload, DropGuard))
 }
 
 pub fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
@@ -55,7 +55,7 @@ pub fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
             None => {
                 #[cfg(feature = "panic-handler")]
                 {
-                    drop_panic();
+                    foreign_exception();
                 }
                 core::intrinsics::abort();
             }

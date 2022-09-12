@@ -27,7 +27,7 @@ const fn next_value(x: usize) -> usize {
 
 impl<R: gimli::Reader> gimli::UnwindContextStorage<R> for StoreOnStack {
     type Rules = [(Register, RegisterRule<R>); next_value(MAX_REG_RULES)];
-    type Stack = [UnwindTableRow<R, Self>; 1];
+    type Stack = [UnwindTableRow<R, Self>; 2];
 }
 
 #[cfg(feature = "dwarf-expr")]

@@ -137,7 +137,7 @@ binding! {
     extern "C-unwind" fn _Unwind_RaiseException(
         exception: &mut UnwindException,
     ) -> UnwindReasonCode;
-    extern "C-unwind" fn _Unwind_ForceUnwind(
+    extern "C-unwind" fn _Unwind_ForcedUnwind(
         exception: &mut UnwindException,
         stop: UnwindStopFn,
         stop_arg: *mut c_void,

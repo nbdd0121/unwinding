@@ -217,7 +217,7 @@ fn raise_exception_phase2(
 
 #[inline(never)]
 #[no_mangle]
-pub extern "C-unwind" fn _Unwind_ForceUnwind(
+pub extern "C-unwind" fn _Unwind_ForcedUnwind(
     exception: &mut UnwindException,
     stop: UnwindStopFn,
     stop_arg: *mut c_void,

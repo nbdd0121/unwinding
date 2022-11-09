@@ -1,5 +1,4 @@
 use core::arch::asm;
-use core::fmt;
 use core::ops;
 use gimli::{Arm, Register};
 
@@ -73,16 +72,6 @@ pub extern "C-unwind" fn save_context() -> Context {
 }
 
 //#[naked]
-pub extern "C-unwind" fn restore_context(ctx: &Context) -> ! {
+pub unsafe extern "C-unwind" fn restore_context(_ctx: &Context) -> ! {
     todo!("restore_context")
-}
-
-#[no_mangle]
-pub extern "C-unwind" fn __aeabi_unwind_cpp_pr0() {
-    todo!()
-}
-
-#[no_mangle]
-pub extern "C-unwind" fn __aeabi_unwind_cpp_pr1() {
-    todo!()
 }

@@ -1,17 +1,24 @@
 mod arch;
+// ARM uses custom non-Dwarf format for unwinding.
+#[cfg(target_arch = "arm")]
+mod ehabi;
+#[cfg(not(target_arch = "arm"))]
 mod find_fde;
+#[cfg(not(target_arch = "arm"))]
 mod frame;
 
 use core::ffi::c_void;
 use core::ptr;
 use gimli::Register;
 
+#[cfg(not(target_arch = "arm"))]
+use self::{find_fde::FDEFinder, frame::Frame};
 use crate::abi::*;
 use crate::arch::*;
 use crate::util::*;
 use arch::*;
-use find_fde::FDEFinder;
-use frame::Frame;
+#[cfg(target_arch = "arm")]
+use ehabi::Frame;
 
 #[repr(C)]
 pub struct UnwindException {
@@ -93,10 +100,19 @@ pub extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &UnwindContext<'_>) -> usiz
 
 #[no_mangle]
 pub extern "C" fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void {
-    find_fde::get_finder()
-        .find_fde(pc as usize - 1)
-        .map(|r| r.fde.initial_address() as usize as _)
-        .unwrap_or(ptr::null_mut())
+    #[cfg(not(target_arch = "arm"))]
+    {
+        find_fde::get_finder()
+            .find_fde(pc as usize - 1)
+            .map(|r| r.fde.initial_address() as usize as _)
+            .unwrap_or(ptr::null_mut())
+    }
+
+    #[cfg(target_arch = "arm")]
+    {
+        let _ = pc;
+        todo!()
+    }
 }
 
 macro_rules! try1 {

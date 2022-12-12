@@ -13,6 +13,9 @@ use arch::*;
 use find_fde::FDEFinder;
 use frame::Frame;
 
+#[cfg(feature = "fde-custom")]
+pub use find_fde::custom_eh_frame_finder;
+
 #[repr(C)]
 pub struct UnwindException {
     pub exception_class: u64,

@@ -1,3 +1,5 @@
+#[cfg(feature = "fde-custom")]
+mod custom;
 #[cfg(feature = "fde-static")]
 mod fixed;
 #[cfg(feature = "fde-gnu-eh-frame-hdr")]
@@ -9,6 +11,14 @@ mod registry;
 
 use crate::util::*;
 use gimli::{BaseAddresses, EhFrame, FrameDescriptionEntry};
+
+#[cfg(feature = "fde-custom")]
+pub mod custom_eh_frame_finder {
+    pub use super::custom::{
+        set_custom_eh_frame_finder, EhFrameFinder, FrameInfo, FrameInfoKind,
+        SetCustomEhFrameFinderError,
+    };
+}
 
 #[derive(Debug)]
 pub struct FDESearchResult {
@@ -25,6 +35,10 @@ pub struct GlobalFinder(());
 
 impl FDEFinder for GlobalFinder {
     fn find_fde(&self, pc: usize) -> Option<FDESearchResult> {
+        #[cfg(feature = "fde-custom")]
+        if let Some(v) = custom::get_finder().find_fde(pc) {
+            return Some(v);
+        }
         #[cfg(feature = "fde-registry")]
         if let Some(v) = registry::get_finder().find_fde(pc) {
             return Some(v);

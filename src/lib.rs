@@ -20,6 +20,9 @@ extern crate alloc;
 #[cfg(feature = "unwinder")]
 mod unwinder;
 
+#[cfg(all(feature = "unwinder", feature = "fde-custom"))]
+pub use unwinder::custom_eh_frame_finder;
+
 pub mod abi;
 
 mod arch;

@@ -121,7 +121,7 @@ pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
             mov r14, [rdi + 0x70]
             mov r15, [rdi + 0x78]
 
-            /* RDI resotred last */
+            /* RDI restored last */
             mov rdi, [rdi + 0x28]
 
             ret

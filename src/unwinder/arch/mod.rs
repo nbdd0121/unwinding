@@ -18,10 +18,16 @@ mod aarch64;
 #[cfg(target_arch = "aarch64")]
 pub use aarch64::*;
 
+#[cfg(target_arch = "arm")]
+mod arm;
+#[cfg(target_arch = "arm")]
+pub use arm::*;
+
 #[cfg(not(any(
     target_arch = "x86_64",
     target_arch = "x86",
     target_arch = "riscv64",
-    target_arch = "aarch64"
+    target_arch = "aarch64",
+    target_arch = "arm"
 )))]
 compile_error!("Current architecture is not supported");

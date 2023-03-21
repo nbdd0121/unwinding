@@ -70,11 +70,31 @@ mod aarch64 {
 #[cfg(target_arch = "aarch64")]
 pub use aarch64::*;
 
+#[cfg(target_arch = "arm")]
+mod arm {
+    use gimli::{Arm, Register};
+
+    pub struct Arch;
+
+    #[allow(unused)]
+    impl Arch {
+        pub const SP: Register = Arm::SP;
+        pub const RA: Register = Arm::R14;
+
+        // TODO: what these do?
+        pub const UNWIND_DATA_REG: (Register, Register) = (Arm::R0, Arm::R1);
+        pub const UNWIND_PRIVATE_DATA_SIZE: usize = 2;
+    }
+}
+#[cfg(target_arch = "arm")]
+pub use arm::*;
+
 #[cfg(not(any(
     target_arch = "x86_64",
     target_arch = "x86",
     target_arch = "riscv64",
     target_arch = "riscv32",
-    target_arch = "aarch64"
+    target_arch = "aarch64",
+    target_arch = "arm"
 )))]
 compile_error!("Current architecture is not supported");

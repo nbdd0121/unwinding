@@ -13,6 +13,11 @@ mod riscv64;
 #[cfg(target_arch = "riscv64")]
 pub use riscv64::*;
 
+#[cfg(target_arch = "riscv32")]
+mod riscv32;
+#[cfg(target_arch = "riscv32")]
+pub use riscv32::*;
+
 #[cfg(target_arch = "aarch64")]
 mod aarch64;
 #[cfg(target_arch = "aarch64")]
@@ -22,6 +27,7 @@ pub use aarch64::*;
     target_arch = "x86_64",
     target_arch = "x86",
     target_arch = "riscv64",
+    target_arch = "riscv32",
     target_arch = "aarch64"
 )))]
 compile_error!("Current architecture is not supported");

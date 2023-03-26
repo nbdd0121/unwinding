@@ -6,6 +6,9 @@ use gimli::{Register, RiscV};
 // Match DWARF_FRAME_REGISTERS in libgcc
 pub const MAX_REG_RULES: usize = 65;
 
+#[cfg(all(target_feature = "f", not(target_feature = "d")))]
+compile_error!("RISC-V with only F extension is not supported");
+
 #[repr(C)]
 #[derive(Clone, Default)]
 pub struct Context {

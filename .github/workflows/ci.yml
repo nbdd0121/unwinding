@@ -10,13 +10,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - name: Run Example Binary
+      run: (cargo run --release 2>&1 | tee ../run.log) || true
+      working-directory: example
+    - name: Check Log
+      run: |
+        grep "panicked at 'panic', example/src/main.rs:36:5" run.log
+        grep 'note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace' run.log
+        grep 'dropped: "string"' run.log
+        grep 'caught' run.log
+        grep "panicked at 'panic', example/src/main.rs:46:5" run.log
+        grep "panicked at 'panic on drop', example/src/main.rs:25:9" run.log
+        grep "thread panicked while processing panic. aborting." run.log

@@ -14,7 +14,7 @@ struct PrintOnDrop(String);
 
 impl Drop for PrintOnDrop {
     fn drop(&mut self) {
-        println!("dropped: {:?}", self.0);
+        eprintln!("dropped: {:?}", self.0);
     }
 }
 
@@ -26,6 +26,7 @@ impl Drop for PanicOnDrop {
     }
 }
 
+#[track_caller]
 fn foo() {
     panic!("panic");
 }
@@ -38,9 +39,9 @@ fn bar() {
 fn main() {
     let _ = unwinding::panic::catch_unwind(|| {
         bar();
-        println!("done");
+        eprintln!("done");
     });
-    println!("caught");
+    eprintln!("caught");
     let _p = PanicOnDrop;
     foo();
 }

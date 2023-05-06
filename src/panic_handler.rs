@@ -80,7 +80,7 @@ fn do_panic(msg: Box<dyn Any + Send>) -> ! {
     if PANIC_COUNT.get() >= 1 {
         stack_trace();
         eprintln!("thread panicked while processing panic. aborting.");
-        core::intrinsics::abort();
+        crate::util::abort();
     }
     PANIC_COUNT.set(1);
     if check_env() {
@@ -88,7 +88,7 @@ fn do_panic(msg: Box<dyn Any + Send>) -> ! {
     }
     let code = crate::panic::begin_panic(Box::new(msg));
     eprintln!("failed to initiate panic, error {}", code.0);
-    core::intrinsics::abort();
+    crate::util::abort();
 }
 
 #[panic_handler]

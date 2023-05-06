@@ -18,7 +18,7 @@ impl Drop for DropGuard {
         {
             drop_panic();
         }
-        core::intrinsics::abort();
+        crate::util::abort();
     }
 }
 
@@ -57,7 +57,7 @@ pub fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
                 {
                     foreign_exception();
                 }
-                core::intrinsics::abort();
+                crate::util::abort();
             }
             Some(e) => {
                 #[cfg(feature = "panic-handler")]

@@ -23,3 +23,19 @@ pub use libc::c_int;
 #[cfg(not(feature = "libc"))]
 #[allow(non_camel_case_types)]
 pub type c_int = i32;
+
+#[cfg(all(
+    any(feature = "panicking", feature = "panic-handler-dummy"),
+    feature = "libc"
+))]
+pub fn abort() -> ! {
+    unsafe { libc::abort() };
+}
+
+#[cfg(all(
+    any(feature = "panicking", feature = "panic-handler-dummy"),
+    not(feature = "libc")
+))]
+pub fn abort() -> ! {
+    core::intrinsics::abort();
+}

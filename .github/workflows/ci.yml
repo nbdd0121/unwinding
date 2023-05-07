@@ -11,6 +11,7 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
+          - i686-unknown-linux-gnu
           - aarch64-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
         build_std: [false]

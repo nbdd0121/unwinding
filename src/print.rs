@@ -49,3 +49,22 @@ macro_rules! eprint {
         let _ = core::write!($crate::print::StderrPrinter, $($arg)*);
     })
 }
+
+#[macro_export]
+macro_rules! dbg {
+    () => {
+        $crate::eprintln!("[{}:{}]", ::core::file!(), ::core::line!())
+    };
+    ($val:expr $(,)?) => {
+        match $val {
+            tmp => {
+                $crate::eprintln!("[{}:{}] {} = {:#?}",
+                    ::core::file!(), ::core::line!(), ::core::stringify!($val), &tmp);
+                tmp
+            }
+        }
+    };
+    ($($val:expr),+ $(,)?) => {
+        ($($crate::dbg!($val)),+,)
+    };
+}

@@ -229,7 +229,10 @@ fn raise_exception_phase2(
 
                 match code {
                     UnwindReasonCode::CONTINUE_UNWIND => (),
-                    UnwindReasonCode::INSTALL_CONTEXT => break,
+                    UnwindReasonCode::INSTALL_CONTEXT => {
+                        frame.adjust_stack_for_args(ctx);
+                        return UnwindReasonCode::INSTALL_CONTEXT;
+                    }
                     _ => return UnwindReasonCode::FATAL_PHASE2_ERROR,
                 }
             }
@@ -240,8 +243,6 @@ fn raise_exception_phase2(
             return UnwindReasonCode::FATAL_PHASE2_ERROR;
         }
     }
-
-    UnwindReasonCode::INSTALL_CONTEXT
 }
 
 #[inline(never)]
@@ -312,7 +313,10 @@ fn force_unwind_phase2(
 
                 match code {
                     UnwindReasonCode::CONTINUE_UNWIND => (),
-                    UnwindReasonCode::INSTALL_CONTEXT => break,
+                    UnwindReasonCode::INSTALL_CONTEXT => {
+                        frame.adjust_stack_for_args(ctx);
+                        return UnwindReasonCode::INSTALL_CONTEXT;
+                    }
                     _ => return UnwindReasonCode::FATAL_PHASE2_ERROR,
                 }
             }
@@ -323,8 +327,6 @@ fn force_unwind_phase2(
             return UnwindReasonCode::END_OF_STACK;
         }
     }
-
-    UnwindReasonCode::INSTALL_CONTEXT
 }
 
 #[inline(never)]

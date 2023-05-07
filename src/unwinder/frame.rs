@@ -125,6 +125,11 @@ impl Frame {
         Err(gimli::Error::UnsupportedEvaluation)
     }
 
+    pub fn adjust_stack_for_args(&self, ctx: &mut Context) {
+        let size = self.row.saved_args_size();
+        ctx[Arch::SP] = ctx[Arch::SP].wrapping_add(size as usize);
+    }
+
     pub fn unwind(&self, ctx: &Context) -> Result<Context, gimli::Error> {
         let row = &self.row;
         let mut new_ctx = ctx.clone();

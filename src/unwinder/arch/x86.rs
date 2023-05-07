@@ -61,14 +61,14 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
     unsafe {
         asm!(
             "
-            sub esp, 44
+            sub esp, 52
 
             mov [esp + 4], ecx
             mov [esp + 8], edx
             mov [esp + 12], ebx
 
             /* Adjust the stack to account for the return address */
-            lea eax, [esp + 48]
+            lea eax, [esp + 56]
             mov [esp + 16], eax
 
             mov [esp + 20], ebp
@@ -76,19 +76,19 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             mov [esp + 28], edi
 
             /* Return address */
-            mov eax, [esp + 44]
+            mov eax, [esp + 52]
             mov [esp + 32], eax
 
             stmxcsr [esp + 36]
             fnstcw [esp + 40]
 
-            mov eax, [esp + 52]
+            mov eax, [esp + 60]
             mov ecx, esp
             push eax
             push ecx
-            call [esp + 56]
+            call [esp + 64]
 
-            add esp, 52
+            add esp, 60
             ret
             ",
             options(noreturn)

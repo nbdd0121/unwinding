@@ -59,25 +59,34 @@ impl ops::IndexMut<gimli::Register> for Context {
 }
 
 #[naked]
-pub extern "C-unwind" fn save_context() -> Context {
+pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     // No need to save caller-saved registers here.
     unsafe {
         asm!(
             "
-            stp d8, d9, [x8, 0x140]
-            stp d10, d11, [x8, 0x150]
-            stp d12, d13, [x8, 0x160]
-            stp d14, d15, [x8, 0x170]
-
-            str x19, [x8, 0x98]
-            stp x20, x21, [x8, 0xA0]
-            stp x22, x23, [x8, 0xB0]
-            stp x24, x25, [x8, 0xC0]
-            stp x26, x27, [x8, 0xD0]
-            stp x28, x29, [x8, 0xE0]
+            stp x29, x30, [sp, -16]!
+            sub sp, sp, 512
+            mov x8, x0
             mov x0, sp
-            stp x30, x0, [x8, 0xF0]
 
+            stp d8, d9, [sp, 0x140]
+            stp d10, d11, [sp, 0x150]
+            stp d12, d13, [sp, 0x160]
+            stp d14, d15, [sp, 0x170]
+
+            str x19, [sp, 0x98]
+            stp x20, x21, [sp, 0xA0]
+            stp x22, x23, [sp, 0xB0]
+            stp x24, x25, [sp, 0xC0]
+            stp x26, x27, [sp, 0xD0]
+            stp x28, x29, [sp, 0xE0]
+            add x2, sp, 528
+            stp x30, x2, [sp, 0xF0]
+
+            blr x8
+
+            add sp, sp, 512
+            ldp x29, x30, [sp], 16
             ret
             ",
             options(noreturn)

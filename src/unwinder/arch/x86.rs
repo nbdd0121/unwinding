@@ -56,28 +56,40 @@ impl ops::IndexMut<gimli::Register> for Context {
 }
 
 #[naked]
-pub extern "C-unwind" fn save_context() -> Context {
+pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     // No need to save caller-saved registers here.
     unsafe {
         asm!(
             "
-            mov eax, [esp + 4]
-            mov [eax + 4], ecx
-            mov [eax + 8], edx
-            mov [eax + 12], ebx
-            mov [eax + 20], ebp
-            mov [eax + 24], esi
-            mov [eax + 28], edi
+            sub esp, 44
+
+            mov [esp + 4], ecx
+            mov [esp + 8], edx
+            mov [esp + 12], ebx
 
             /* Adjust the stack to account for the return address */
-            lea edx, [esp + 4]
-            mov [eax + 16], edx
+            lea eax, [esp + 48]
+            mov [esp + 16], eax
 
-            mov edx, [esp]
-            mov [eax + 32], edx
-            stmxcsr [eax + 36]
-            fnstcw [eax + 40]
-            ret 4
+            mov [esp + 20], ebp
+            mov [esp + 24], esi
+            mov [esp + 28], edi
+
+            /* Return address */
+            mov eax, [esp + 44]
+            mov [esp + 32], eax
+
+            stmxcsr [esp + 36]
+            fnstcw [esp + 40]
+
+            mov eax, [esp + 52]
+            mov ecx, esp
+            push eax
+            push ecx
+            call [esp + 56]
+
+            add esp, 52
+            ret
             ",
             options(noreturn)
         );

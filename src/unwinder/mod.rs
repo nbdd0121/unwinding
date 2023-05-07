@@ -16,6 +16,33 @@ use frame::Frame;
 #[cfg(feature = "fde-custom")]
 pub use find_fde::custom_eh_frame_finder;
 
+// Helper function to turn `save_context` which takes function pointer to a closure-taking function.
+fn with_context<T, F: FnOnce(&mut Context) -> T>(f: F) -> T {
+    use core::mem::ManuallyDrop;
+
+    union Data<T, F> {
+        f: ManuallyDrop<F>,
+        t: ManuallyDrop<T>,
+    }
+
+    extern "C" fn delegate<T, F: FnOnce(&mut Context) -> T>(ctx: &mut Context, ptr: *mut ()) {
+        // SAFETY: This function is called exactly once; it extracts the function, call it and
+        // store the return value. This function is `extern "C"` so we don't need to worry about
+        // unwinding past it.
+        unsafe {
+            let data = &mut *ptr.cast::<Data<T, F>>();
+            let t = ManuallyDrop::take(&mut data.f)(ctx);
+            data.t = ManuallyDrop::new(t);
+        }
+    }
+
+    let mut data = Data {
+        f: ManuallyDrop::new(f),
+    };
+    save_context(delegate::<T, F>, ptr::addr_of_mut!(data).cast());
+    unsafe { ManuallyDrop::into_inner(data.t) }
+}
+
 #[repr(C)]
 pub struct UnwindException {
     pub exception_class: u64,
@@ -125,53 +152,52 @@ macro_rules! try2 {
 pub extern "C-unwind" fn _Unwind_RaiseException(
     exception: &mut UnwindException,
 ) -> UnwindReasonCode {
-    let saved_ctx = save_context();
+    with_context(|saved_ctx| {
+        // Phase 1: Search for handler
+        let mut ctx = saved_ctx.clone();
+        let mut signal = false;
+        loop {
+            if let Some(frame) = try1!(Frame::from_context(&ctx, signal)) {
+                if let Some(personality) = frame.personality() {
+                    let result = personality(
+                        1,
+                        UnwindAction::SEARCH_PHASE,
+                        exception.exception_class,
+                        exception,
+                        &mut UnwindContext {
+                            frame: Some(&frame),
+                            ctx: &mut ctx,
+                            signal,
+                        },
+                    );
 
-    // Phase 1: Search for handler
-    let mut ctx = saved_ctx.clone();
-    let mut signal = false;
-    loop {
-        if let Some(frame) = try1!(Frame::from_context(&ctx, signal)) {
-            if let Some(personality) = frame.personality() {
-                let result = personality(
-                    1,
-                    UnwindAction::SEARCH_PHASE,
-                    exception.exception_class,
-                    exception,
-                    &mut UnwindContext {
-                        frame: Some(&frame),
-                        ctx: &mut ctx,
-                        signal,
-                    },
-                );
-
-                match result {
-                    UnwindReasonCode::CONTINUE_UNWIND => (),
-                    UnwindReasonCode::HANDLER_FOUND => {
-                        break;
+                    match result {
+                        UnwindReasonCode::CONTINUE_UNWIND => (),
+                        UnwindReasonCode::HANDLER_FOUND => {
+                            break;
+                        }
+                        _ => return UnwindReasonCode::FATAL_PHASE1_ERROR,
                     }
-                    _ => return UnwindReasonCode::FATAL_PHASE1_ERROR,
                 }
+
+                ctx = try1!(frame.unwind(&ctx));
+                signal = frame.is_signal_trampoline();
+            } else {
+                return UnwindReasonCode::END_OF_STACK;
             }
-
-            ctx = try1!(frame.unwind(&ctx));
-            signal = frame.is_signal_trampoline();
-        } else {
-            return UnwindReasonCode::END_OF_STACK;
         }
-    }
 
-    // Disambiguate normal frame and signal frame.
-    let handler_cfa = ctx[Arch::SP] - signal as usize;
-    exception.private_1 = None;
-    exception.private_2 = handler_cfa;
+        // Disambiguate normal frame and signal frame.
+        let handler_cfa = ctx[Arch::SP] - signal as usize;
+        exception.private_1 = None;
+        exception.private_2 = handler_cfa;
 
-    let mut ctx = saved_ctx;
-    let code = raise_exception_phase2(exception, &mut ctx, handler_cfa);
-    match code {
-        UnwindReasonCode::INSTALL_CONTEXT => unsafe { restore_context(&ctx) },
-        _ => code,
-    }
+        let code = raise_exception_phase2(exception, saved_ctx, handler_cfa);
+        match code {
+            UnwindReasonCode::INSTALL_CONTEXT => unsafe { restore_context(saved_ctx) },
+            _ => code,
+        }
+    })
 }
 
 fn raise_exception_phase2(
@@ -225,16 +251,16 @@ pub extern "C-unwind" fn _Unwind_ForcedUnwind(
     stop: UnwindStopFn,
     stop_arg: *mut c_void,
 ) -> UnwindReasonCode {
-    let mut ctx = save_context();
+    with_context(|ctx| {
+        exception.private_1 = Some(stop);
+        exception.private_2 = stop_arg as _;
 
-    exception.private_1 = Some(stop);
-    exception.private_2 = stop_arg as _;
-
-    let code = force_unwind_phase2(exception, &mut ctx, stop, stop_arg);
-    match code {
-        UnwindReasonCode::INSTALL_CONTEXT => unsafe { restore_context(&ctx) },
-        _ => code,
-    }
+        let code = force_unwind_phase2(exception, ctx, stop, stop_arg);
+        match code {
+            UnwindReasonCode::INSTALL_CONTEXT => unsafe { restore_context(ctx) },
+            _ => code,
+        }
+    })
 }
 
 fn force_unwind_phase2(
@@ -304,21 +330,21 @@ fn force_unwind_phase2(
 #[inline(never)]
 #[no_mangle]
 pub extern "C-unwind" fn _Unwind_Resume(exception: &mut UnwindException) -> ! {
-    let mut ctx = save_context();
+    with_context(|ctx| {
+        let code = match exception.private_1 {
+            None => {
+                let handler_cfa = exception.private_2;
+                raise_exception_phase2(exception, ctx, handler_cfa)
+            }
+            Some(stop) => {
+                let stop_arg = exception.private_2 as _;
+                force_unwind_phase2(exception, ctx, stop, stop_arg)
+            }
+        };
+        assert!(code == UnwindReasonCode::INSTALL_CONTEXT);
 
-    let code = match exception.private_1 {
-        None => {
-            let handler_cfa = exception.private_2;
-            raise_exception_phase2(exception, &mut ctx, handler_cfa)
-        }
-        Some(stop) => {
-            let stop_arg = exception.private_2 as _;
-            force_unwind_phase2(exception, &mut ctx, stop, stop_arg)
-        }
-    };
-    assert!(code == UnwindReasonCode::INSTALL_CONTEXT);
-
-    unsafe { restore_context(&ctx) }
+        unsafe { restore_context(ctx) }
+    })
 }
 
 #[inline(never)]
@@ -331,13 +357,13 @@ pub extern "C-unwind" fn _Unwind_Resume_or_Rethrow(
         Some(v) => v,
     };
 
-    let mut ctx = save_context();
+    with_context(|ctx| {
+        let stop_arg = exception.private_2 as _;
+        let code = force_unwind_phase2(exception, ctx, stop, stop_arg);
+        assert!(code == UnwindReasonCode::INSTALL_CONTEXT);
 
-    let stop_arg = exception.private_2 as _;
-    let code = force_unwind_phase2(exception, &mut ctx, stop, stop_arg);
-    assert!(code == UnwindReasonCode::INSTALL_CONTEXT);
-
-    unsafe { restore_context(&ctx) }
+        unsafe { restore_context(ctx) }
+    })
 }
 
 #[no_mangle]
@@ -353,36 +379,38 @@ pub extern "C-unwind" fn _Unwind_Backtrace(
     trace: UnwindTraceFn,
     trace_argument: *mut c_void,
 ) -> UnwindReasonCode {
-    let mut ctx = save_context();
-    let mut signal = false;
-    let mut skipping = cfg!(feature = "hide-trace");
+    with_context(|ctx| {
+        let mut ctx = ctx.clone();
+        let mut signal = false;
+        let mut skipping = cfg!(feature = "hide-trace");
 
-    loop {
-        let frame = try1!(Frame::from_context(&ctx, signal));
-        if !skipping {
-            let code = trace(
-                &mut UnwindContext {
-                    frame: frame.as_ref(),
-                    ctx: &mut ctx,
-                    signal,
-                },
-                trace_argument,
-            );
-            match code {
-                UnwindReasonCode::NO_REASON => (),
-                _ => return UnwindReasonCode::FATAL_PHASE1_ERROR,
-            }
-        }
-        if let Some(frame) = frame {
-            if skipping {
-                if frame.initial_address() == _Unwind_Backtrace as usize {
-                    skipping = false;
+        loop {
+            let frame = try1!(Frame::from_context(&ctx, signal));
+            if !skipping {
+                let code = trace(
+                    &mut UnwindContext {
+                        frame: frame.as_ref(),
+                        ctx: &mut ctx,
+                        signal,
+                    },
+                    trace_argument,
+                );
+                match code {
+                    UnwindReasonCode::NO_REASON => (),
+                    _ => return UnwindReasonCode::FATAL_PHASE1_ERROR,
                 }
             }
-            ctx = try1!(frame.unwind(&ctx));
-            signal = frame.is_signal_trampoline();
-        } else {
-            return UnwindReasonCode::END_OF_STACK;
+            if let Some(frame) = frame {
+                if skipping {
+                    if frame.initial_address() == _Unwind_Backtrace as usize {
+                        skipping = false;
+                    }
+                }
+                ctx = try1!(frame.unwind(&ctx));
+                signal = frame.is_signal_trampoline();
+            } else {
+                return UnwindReasonCode::END_OF_STACK;
+            }
         }
-    }
+    })
 }

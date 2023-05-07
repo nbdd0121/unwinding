@@ -58,27 +58,35 @@ impl ops::IndexMut<gimli::Register> for Context {
 }
 
 #[naked]
-pub extern "C-unwind" fn save_context() -> Context {
+pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     // No need to save caller-saved registers here.
     unsafe {
         asm!(
             "
-            mov rax, rdi
-            mov [rax + 0x18], rbx
-            mov [rax + 0x30], rbp
+            sub rsp, 0x98
+            mov [rsp + 0x18], rbx
+            mov [rsp + 0x30], rbp
 
             /* Adjust the stack to account for the return address */
-            lea rdi, [rsp + 8]
-            mov [rax + 0x38], rdi
+            lea rax, [rsp + 0xA0]
+            mov [rsp + 0x38], rax
 
-            mov [rax + 0x60], r12
-            mov [rax + 0x68], r13
-            mov [rax + 0x70], r14
-            mov [rax + 0x78], r15
-            mov rdx, [rsp]
-            mov [rax + 0x80], rdx
-            stmxcsr [rax + 0x88]
-            fnstcw [rax + 0x90]
+            mov [rsp + 0x60], r12
+            mov [rsp + 0x68], r13
+            mov [rsp + 0x70], r14
+            mov [rsp + 0x78], r15
+
+            /* Return address */
+            mov rax, [rsp + 0x98]
+            mov [rsp + 0x80], rax
+
+            stmxcsr [rsp + 0x88]
+            fnstcw [rsp + 0x90]
+
+            mov rax, rdi
+            mov rdi, rsp
+            call rax
+            add rsp, 0x98
             ret
             ",
             options(noreturn)

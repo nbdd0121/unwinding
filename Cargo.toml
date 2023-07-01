@@ -13,7 +13,7 @@ members = ["cdylib", "example"]
 [dependencies]
 gimli = { version = "0.26.1", default-features = false, features = ["read-core"] }
 libc = { version = "0.2", optional = true }
-spin = { version = "0.9", optional = true, default-features = false, features = ["mutex", "spin_mutex"] }
+spin = { version = "0.9.8", optional = true, default-features = false, features = ["mutex", "spin_mutex"] }
 
 [features]
 alloc = []

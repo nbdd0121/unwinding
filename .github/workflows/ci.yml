@@ -14,10 +14,7 @@ jobs:
           - i686-unknown-linux-gnu
           - aarch64-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
-        build_std: [false]
-        include:
-          - target: riscv32gc-unknown-linux-gnu
-            build_std: true
+          - riscv32gc-unknown-linux-gnu
     runs-on: ubuntu-latest
 
     steps:
@@ -26,28 +23,16 @@ jobs:
       run: |
         rustup update nightly
         rustup default nightly
-    - name: Install Rust standard library source
-      if: matrix.build_std
-      run: rustup component add rust-src
     - name: Install cross-compilation tools
       uses: taiki-e/setup-cross-toolchain-action@v1
       with:
         target: ${{ matrix.target }}
 
     - name: Build example binary
-      if: '!matrix.build_std'
-      run: cargo build --release
-    - name: Build example binary
-      if: matrix.build_std
-      run: cargo build --release -Zbuild-std
+      run: cargo build --release $BUILD_STD
 
     - name: Run example binary
-      if: '!matrix.build_std'
-      run: (cargo run --release 2>&1 | tee ../run.log) || true
-      working-directory: example
-    - name: Run example binary
-      if: matrix.build_std
-      run: (cargo run --release -Zbuild-std 2>&1 | tee ../run.log) || true
+      run: (cargo run --release $BUILD_STD 2>&1 | tee ../run.log) || true
       working-directory: example
 
     - name: Check log

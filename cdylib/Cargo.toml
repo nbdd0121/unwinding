@@ -5,7 +5,7 @@ authors = ["Gary Guo <gary@garyguo.net>"]
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 unwinding = { path = "../", features = ["system-alloc", "personality-dummy", "panic-handler-dummy"] }

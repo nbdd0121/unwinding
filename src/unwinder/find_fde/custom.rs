@@ -22,7 +22,7 @@ pub unsafe trait EhFrameFinder {
 }
 
 pub struct FrameInfo {
-    pub text_base: usize,
+    pub text_base: Option<usize>,
     pub kind: FrameInfoKind,
 }
 
@@ -102,13 +102,14 @@ fn find_fde<T: EhFrameFinder + ?Sized>(eh_frame_finder: &T, pc: usize) -> Option
 
 fn find_fde_with_eh_frame_hdr(
     pc: usize,
-    text_base: usize,
+    text_base: Option<usize>,
     eh_frame_hdr: usize,
 ) -> Option<FDESearchResult> {
     unsafe {
-        let bases = BaseAddresses::default()
-            .set_text(text_base as _)
-            .set_eh_frame_hdr(eh_frame_hdr as _);
+        let mut bases = BaseAddresses::default().set_eh_frame_hdr(eh_frame_hdr as _);
+        if let Some(text_base) = text_base {
+            bases = bases.set_text(text_base as _);
+        }
         let eh_frame_hdr = EhFrameHdr::new(
             get_unlimited_slice(eh_frame_hdr as usize as _),
             NativeEndian,
@@ -145,11 +146,16 @@ fn find_fde_with_eh_frame_hdr(
     }
 }
 
-fn find_fde_with_eh_frame(pc: usize, text_base: usize, eh_frame: usize) -> Option<FDESearchResult> {
+fn find_fde_with_eh_frame(
+    pc: usize,
+    text_base: Option<usize>,
+    eh_frame: usize,
+) -> Option<FDESearchResult> {
     unsafe {
-        let bases = BaseAddresses::default()
-            .set_text(text_base as _)
-            .set_eh_frame(eh_frame as _);
+        let mut bases = BaseAddresses::default().set_eh_frame(eh_frame as _);
+        if let Some(text_base) = text_base {
+            bases = bases.set_text(text_base as _);
+        }
         let eh_frame = EhFrame::new(get_unlimited_slice(eh_frame as _), NativeEndian);
 
         if let Ok(fde) = eh_frame.fde_for_address(&bases, pc as _, EhFrame::cie_from_offset) {

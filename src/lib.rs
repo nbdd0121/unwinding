@@ -33,7 +33,7 @@ pub mod print;
 
 #[cfg(feature = "personality")]
 mod personality;
-#[cfg(feature = "personality-dummy")]
+#[cfg(all(not(feature = "personality"), feature = "personality-dummy"))]
 mod personality_dummy;
 
 #[cfg(feature = "panic")]
@@ -43,7 +43,7 @@ pub mod panicking;
 
 #[cfg(feature = "panic-handler")]
 mod panic_handler;
-#[cfg(feature = "panic-handler-dummy")]
+#[cfg(all(not(feature = "panic-handler"), feature = "panic-handler-dummy"))]
 mod panic_handler_dummy;
 
 #[cfg(feature = "system-alloc")]

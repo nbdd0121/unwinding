@@ -37,10 +37,4 @@ jobs:
 
     - name: Check log
       run: |
-        grep "panicked at 'panic', example/src/main.rs:36:5" run.log
-        grep 'note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace' run.log
-        grep 'dropped: "string"' run.log
-        grep 'caught' run.log
-        grep "panicked at 'panic', example/src/main.rs:46:5" run.log
-        grep "panicked at 'panic on drop', example/src/main.rs:25:9" run.log
-        grep "thread panicked while processing panic. aborting." run.log
+        grep -Pz 'panicked at example/src/main.rs:36:5:\npanic\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ndropped: "string"\ncaught\npanicked at example/src/main.rs:46:5:\npanic\npanicked at example/src/main.rs:25:9:\npanic on drop\n( *\d+:.*\n)+thread panicked while processing panic\. aborting\.' run.log

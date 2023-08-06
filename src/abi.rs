@@ -118,7 +118,18 @@ macro_rules! binding {
     };
 }
 
-#[cfg(not(feature = "unwinder"))]
+#[cfg(feature = "unwinder")]
+macro_rules! binding {
+    () => {};
+    (unsafe extern $abi: literal fn $name: ident ($($arg: ident : $arg_ty: ty),*$(,)?) $(-> $ret: ty)?; $($rest: tt)*) => {
+        const _: unsafe extern $abi fn($($arg_ty),*) $(-> $ret)? = $name;
+    };
+
+    (extern $abi: literal fn $name: ident ($($arg: ident : $arg_ty: ty),*$(,)?) $(-> $ret: ty)?; $($rest: tt)*) => {
+        const _: extern $abi fn($($arg_ty),*) $(-> $ret)? = $name;
+    };
+}
+
 binding! {
     extern "C" fn _Unwind_GetGR(unwind_ctx: &UnwindContext<'_>, index: c_int) -> usize;
     extern "C" fn _Unwind_GetCFA(unwind_ctx: &UnwindContext<'_>) -> usize;

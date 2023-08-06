@@ -97,17 +97,24 @@ pub type PersonalityRoutine = unsafe extern "C" fn(
 
 #[cfg(not(feature = "unwinder"))]
 macro_rules! binding {
-    ($(extern $abi: literal $([$t:tt])? fn $name: ident ($($arg: ident : $arg_ty: ty),*$(,)?) $(-> $ret: ty)?;)*) => {
-        $(
-            #[allow(non_snake_case)]
-            #[inline]
-            pub $($t)? fn $name($($arg: $arg_ty),*) $(-> $ret)? {
-                extern $abi {
-                    fn $name($($arg: $arg_ty),*) $(-> $ret)?;
-                }
-                unsafe { $name($($arg),*) }
+    () => {};
+    (unsafe extern $abi: literal fn $name: ident ($($arg: ident : $arg_ty: ty),*$(,)?) $(-> $ret: ty)?; $($rest: tt)*) => {
+        extern $abi {
+            pub fn $name($($arg: $arg_ty),*) $(-> $ret)?;
+        }
+        binding!($($rest)*);
+    };
+
+    (extern $abi: literal fn $name: ident ($($arg: ident : $arg_ty: ty),*$(,)?) $(-> $ret: ty)?; $($rest: tt)*) => {
+        #[allow(non_snake_case)]
+        #[inline]
+        pub fn $name($($arg: $arg_ty),*) $(-> $ret)? {
+            extern $abi {
+                fn $name($($arg: $arg_ty),*) $(-> $ret)?;
             }
-        )*
+            unsafe { $name($($arg),*) }
+        }
+        binding!($($rest)*);
     };
 }
 
@@ -134,19 +141,19 @@ binding! {
     extern "C" fn _Unwind_GetTextRelBase(unwind_ctx: &UnwindContext<'_>) -> usize;
     extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &UnwindContext<'_>) -> usize;
     extern "C" fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void;
-    extern "C-unwind" [unsafe] fn _Unwind_RaiseException(
+    unsafe extern "C-unwind" fn _Unwind_RaiseException(
         exception: *mut UnwindException,
     ) -> UnwindReasonCode;
-    extern "C-unwind" [unsafe] fn _Unwind_ForcedUnwind(
+    unsafe extern "C-unwind" fn _Unwind_ForcedUnwind(
         exception: *mut UnwindException,
         stop: UnwindStopFn,
         stop_arg: *mut c_void,
     ) -> UnwindReasonCode;
-    extern "C-unwind" [unsafe] fn _Unwind_Resume(exception: *mut UnwindException) -> !;
-    extern "C-unwind" [unsafe] fn _Unwind_Resume_or_Rethrow(
+    unsafe extern "C-unwind" fn _Unwind_Resume(exception: *mut UnwindException) -> !;
+    unsafe extern "C-unwind" fn _Unwind_Resume_or_Rethrow(
         exception: *mut UnwindException,
     ) -> UnwindReasonCode;
-    extern "C" [unsafe] fn _Unwind_DeleteException(exception: *mut UnwindException);
+    unsafe extern "C" fn _Unwind_DeleteException(exception: *mut UnwindException);
     extern "C-unwind" fn _Unwind_Backtrace(
         trace: UnwindTraceFn,
         trace_argument: *mut c_void,

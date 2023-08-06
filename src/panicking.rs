@@ -21,7 +21,7 @@ pub fn begin_panic<E: Exception>(exception: E) -> UnwindReasonCode {
     unsafe {
         (*ex).exception_class = u64::from_be_bytes(E::CLASS);
         (*ex).exception_cleanup = Some(exception_cleanup::<E>);
-        _Unwind_RaiseException(&mut *ex)
+        _Unwind_RaiseException(ex)
     }
 }
 

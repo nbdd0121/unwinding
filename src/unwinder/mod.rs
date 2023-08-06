@@ -149,8 +149,8 @@ macro_rules! try2 {
 
 #[inline(never)]
 #[no_mangle]
-pub extern "C-unwind" fn _Unwind_RaiseException(
-    exception: &mut UnwindException,
+pub unsafe extern "C-unwind" fn _Unwind_RaiseException(
+    exception: *mut UnwindException,
 ) -> UnwindReasonCode {
     with_context(|saved_ctx| {
         // Phase 1: Search for handler
@@ -159,17 +159,19 @@ pub extern "C-unwind" fn _Unwind_RaiseException(
         loop {
             if let Some(frame) = try1!(Frame::from_context(&ctx, signal)) {
                 if let Some(personality) = frame.personality() {
-                    let result = personality(
-                        1,
-                        UnwindAction::SEARCH_PHASE,
-                        exception.exception_class,
-                        exception,
-                        &mut UnwindContext {
-                            frame: Some(&frame),
-                            ctx: &mut ctx,
-                            signal,
-                        },
-                    );
+                    let result = unsafe {
+                        personality(
+                            1,
+                            UnwindAction::SEARCH_PHASE,
+                            (*exception).exception_class,
+                            exception,
+                            &mut UnwindContext {
+                                frame: Some(&frame),
+                                ctx: &mut ctx,
+                                signal,
+                            },
+                        )
+                    };
 
                     match result {
                         UnwindReasonCode::CONTINUE_UNWIND => (),
@@ -189,8 +191,10 @@ pub extern "C-unwind" fn _Unwind_RaiseException(
 
         // Disambiguate normal frame and signal frame.
         let handler_cfa = ctx[Arch::SP] - signal as usize;
-        exception.private_1 = None;
-        exception.private_2 = handler_cfa;
+        unsafe {
+            (*exception).private_1 = None;
+            (*exception).private_2 = handler_cfa;
+        }
 
         let code = raise_exception_phase2(exception, saved_ctx, handler_cfa);
         match code {
@@ -201,7 +205,7 @@ pub extern "C-unwind" fn _Unwind_RaiseException(
 }
 
 fn raise_exception_phase2(
-    exception: &mut UnwindException,
+    exception: *mut UnwindException,
     ctx: &mut Context,
     handler_cfa: usize,
 ) -> UnwindReasonCode {
@@ -210,22 +214,24 @@ fn raise_exception_phase2(
         if let Some(frame) = try2!(Frame::from_context(ctx, signal)) {
             let frame_cfa = ctx[Arch::SP] - signal as usize;
             if let Some(personality) = frame.personality() {
-                let code = personality(
-                    1,
-                    UnwindAction::CLEANUP_PHASE
-                        | if frame_cfa == handler_cfa {
-                            UnwindAction::HANDLER_FRAME
-                        } else {
-                            UnwindAction::empty()
+                let code = unsafe {
+                    personality(
+                        1,
+                        UnwindAction::CLEANUP_PHASE
+                            | if frame_cfa == handler_cfa {
+                                UnwindAction::HANDLER_FRAME
+                            } else {
+                                UnwindAction::empty()
+                            },
+                        (*exception).exception_class,
+                        exception,
+                        &mut UnwindContext {
+                            frame: Some(&frame),
+                            ctx,
+                            signal,
                         },
-                    exception.exception_class,
-                    exception,
-                    &mut UnwindContext {
-                        frame: Some(&frame),
-                        ctx,
-                        signal,
-                    },
-                );
+                    )
+                };
 
                 match code {
                     UnwindReasonCode::CONTINUE_UNWIND => (),
@@ -247,14 +253,16 @@ fn raise_exception_phase2(
 
 #[inline(never)]
 #[no_mangle]
-pub extern "C-unwind" fn _Unwind_ForcedUnwind(
-    exception: &mut UnwindException,
+pub unsafe extern "C-unwind" fn _Unwind_ForcedUnwind(
+    exception: *mut UnwindException,
     stop: UnwindStopFn,
     stop_arg: *mut c_void,
 ) -> UnwindReasonCode {
     with_context(|ctx| {
-        exception.private_1 = Some(stop);
-        exception.private_2 = stop_arg as _;
+        unsafe {
+            (*exception).private_1 = Some(stop);
+            (*exception).private_2 = stop_arg as _;
+        }
 
         let code = force_unwind_phase2(exception, ctx, stop, stop_arg);
         match code {
@@ -265,7 +273,7 @@ pub extern "C-unwind" fn _Unwind_ForcedUnwind(
 }
 
 fn force_unwind_phase2(
-    exception: &mut UnwindException,
+    exception: *mut UnwindException,
     ctx: &mut Context,
     stop: UnwindStopFn,
     stop_arg: *mut c_void,
@@ -274,24 +282,26 @@ fn force_unwind_phase2(
     loop {
         let frame = try2!(Frame::from_context(ctx, signal));
 
-        let code = stop(
-            1,
-            UnwindAction::FORCE_UNWIND
-                | UnwindAction::END_OF_STACK
-                | if frame.is_none() {
-                    UnwindAction::END_OF_STACK
-                } else {
-                    UnwindAction::empty()
+        let code = unsafe {
+            stop(
+                1,
+                UnwindAction::FORCE_UNWIND
+                    | UnwindAction::END_OF_STACK
+                    | if frame.is_none() {
+                        UnwindAction::END_OF_STACK
+                    } else {
+                        UnwindAction::empty()
+                    },
+                (*exception).exception_class,
+                exception,
+                &mut UnwindContext {
+                    frame: frame.as_ref(),
+                    ctx,
+                    signal,
                 },
-            exception.exception_class,
-            exception,
-            &mut UnwindContext {
-                frame: frame.as_ref(),
-                ctx,
-                signal,
-            },
-            stop_arg,
-        );
+                stop_arg,
+            )
+        };
         match code {
             UnwindReasonCode::NO_REASON => (),
             _ => return UnwindReasonCode::FATAL_PHASE2_ERROR,
@@ -299,17 +309,19 @@ fn force_unwind_phase2(
 
         if let Some(frame) = frame {
             if let Some(personality) = frame.personality() {
-                let code = personality(
-                    1,
-                    UnwindAction::FORCE_UNWIND | UnwindAction::CLEANUP_PHASE,
-                    exception.exception_class,
-                    exception,
-                    &mut UnwindContext {
-                        frame: Some(&frame),
-                        ctx,
-                        signal,
-                    },
-                );
+                let code = unsafe {
+                    personality(
+                        1,
+                        UnwindAction::FORCE_UNWIND | UnwindAction::CLEANUP_PHASE,
+                        (*exception).exception_class,
+                        exception,
+                        &mut UnwindContext {
+                            frame: Some(&frame),
+                            ctx,
+                            signal,
+                        },
+                    )
+                };
 
                 match code {
                     UnwindReasonCode::CONTINUE_UNWIND => (),
@@ -331,15 +343,15 @@ fn force_unwind_phase2(
 
 #[inline(never)]
 #[no_mangle]
-pub extern "C-unwind" fn _Unwind_Resume(exception: &mut UnwindException) -> ! {
+pub unsafe extern "C-unwind" fn _Unwind_Resume(exception: *mut UnwindException) -> ! {
     with_context(|ctx| {
-        let code = match exception.private_1 {
+        let code = match unsafe { (*exception).private_1 } {
             None => {
-                let handler_cfa = exception.private_2;
+                let handler_cfa = unsafe { (*exception).private_2 };
                 raise_exception_phase2(exception, ctx, handler_cfa)
             }
             Some(stop) => {
-                let stop_arg = exception.private_2 as _;
+                let stop_arg = unsafe { (*exception).private_2 as _ };
                 force_unwind_phase2(exception, ctx, stop, stop_arg)
             }
         };
@@ -351,16 +363,16 @@ pub extern "C-unwind" fn _Unwind_Resume(exception: &mut UnwindException) -> ! {
 
 #[inline(never)]
 #[no_mangle]
-pub extern "C-unwind" fn _Unwind_Resume_or_Rethrow(
-    exception: &mut UnwindException,
+pub unsafe extern "C-unwind" fn _Unwind_Resume_or_Rethrow(
+    exception: *mut UnwindException,
 ) -> UnwindReasonCode {
-    let stop = match exception.private_1 {
-        None => return _Unwind_RaiseException(exception),
+    let stop = match unsafe { (*exception).private_1 } {
+        None => return unsafe { _Unwind_RaiseException(exception) },
         Some(v) => v,
     };
 
     with_context(|ctx| {
-        let stop_arg = exception.private_2 as _;
+        let stop_arg = unsafe { (*exception).private_2 as _ };
         let code = force_unwind_phase2(exception, ctx, stop, stop_arg);
         assert!(code == UnwindReasonCode::INSTALL_CONTEXT);
 

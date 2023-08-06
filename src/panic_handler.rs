@@ -59,10 +59,7 @@ fn stack_trace() {
     struct CallbackData {
         counter: usize,
     }
-    extern "C" fn callback(
-        unwind_ctx: &UnwindContext<'_>,
-        arg: *mut c_void,
-    ) -> UnwindReasonCode {
+    extern "C" fn callback(unwind_ctx: &UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode {
         let data = unsafe { &mut *(arg as *mut CallbackData) };
         data.counter += 1;
         eprintln!(

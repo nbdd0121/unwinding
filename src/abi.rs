@@ -78,7 +78,7 @@ pub struct UnwindException {
 }
 
 pub type UnwindTraceFn =
-    extern "C" fn(ctx: &mut UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode;
+    extern "C" fn(ctx: &UnwindContext<'_>, arg: *mut c_void) -> UnwindReasonCode;
 
 #[cfg(not(feature = "unwinder"))]
 #[repr(C)]

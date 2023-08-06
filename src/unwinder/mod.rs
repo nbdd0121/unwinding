@@ -390,7 +390,7 @@ pub extern "C-unwind" fn _Unwind_Backtrace(
             let frame = try1!(Frame::from_context(&ctx, signal));
             if !skipping {
                 let code = trace(
-                    &mut UnwindContext {
+                    &UnwindContext {
                         frame: frame.as_ref(),
                         ctx: &mut ctx,
                         signal,

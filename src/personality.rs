@@ -136,11 +136,11 @@ fn find_eh_action(
 }
 
 #[lang = "eh_personality"]
-fn rust_eh_personality(
+unsafe fn rust_eh_personality(
     version: c_int,
     actions: UnwindAction,
     _exception_class: u64,
-    exception: &mut UnwindException,
+    exception: *mut UnwindException,
     unwind_ctx: &mut UnwindContext<'_>,
 ) -> UnwindReasonCode {
     if version != 1 {
@@ -170,7 +170,7 @@ fn rust_eh_personality(
                 _Unwind_SetGR(
                     unwind_ctx,
                     Arch::UNWIND_DATA_REG.0 .0 as _,
-                    exception as *mut _ as usize,
+                    exception as usize,
                 );
                 _Unwind_SetGR(unwind_ctx, Arch::UNWIND_DATA_REG.1 .0 as _, 0);
                 _Unwind_SetIP(unwind_ctx, lpad);

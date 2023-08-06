@@ -60,11 +60,11 @@ impl UnwindAction {
 
 pub type UnwindExceptionCleanupFn = unsafe extern "C" fn(UnwindReasonCode, *mut UnwindException);
 
-pub type UnwindStopFn = extern "C" fn(
+pub type UnwindStopFn = unsafe extern "C" fn(
     c_int,
     UnwindAction,
     u64,
-    &mut UnwindException,
+    *mut UnwindException,
     &mut UnwindContext<'_>,
     *mut c_void,
 ) -> UnwindReasonCode;
@@ -87,11 +87,11 @@ pub struct UnwindContext<'a> {
     phantom: core::marker::PhantomData<&'a ()>,
 }
 
-pub type PersonalityRoutine = extern "C" fn(
+pub type PersonalityRoutine = unsafe extern "C" fn(
     c_int,
     UnwindAction,
     u64,
-    &mut UnwindException,
+    *mut UnwindException,
     &mut UnwindContext<'_>,
 ) -> UnwindReasonCode;
 
@@ -134,17 +134,17 @@ binding! {
     extern "C" fn _Unwind_GetTextRelBase(unwind_ctx: &UnwindContext<'_>) -> usize;
     extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &UnwindContext<'_>) -> usize;
     extern "C" fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void;
-    extern "C-unwind" fn _Unwind_RaiseException(
-        exception: &mut UnwindException,
+    extern "C-unwind" [unsafe] fn _Unwind_RaiseException(
+        exception: *mut UnwindException,
     ) -> UnwindReasonCode;
-    extern "C-unwind" fn _Unwind_ForcedUnwind(
-        exception: &mut UnwindException,
+    extern "C-unwind" [unsafe] fn _Unwind_ForcedUnwind(
+        exception: *mut UnwindException,
         stop: UnwindStopFn,
         stop_arg: *mut c_void,
     ) -> UnwindReasonCode;
-    extern "C-unwind" fn _Unwind_Resume(exception: &mut UnwindException) -> !;
-    extern "C-unwind" fn _Unwind_Resume_or_Rethrow(
-        exception: &mut UnwindException,
+    extern "C-unwind" [unsafe] fn _Unwind_Resume(exception: *mut UnwindException) -> !;
+    extern "C-unwind" [unsafe] fn _Unwind_Resume_or_Rethrow(
+        exception: *mut UnwindException,
     ) -> UnwindReasonCode;
     extern "C" [unsafe] fn _Unwind_DeleteException(exception: *mut UnwindException);
     extern "C-unwind" fn _Unwind_Backtrace(

@@ -1,4 +1,3 @@
-use core::arch::asm;
 use core::fmt;
 use core::ops;
 use gimli::{Register, X86_64};
@@ -57,46 +56,42 @@ impl ops::IndexMut<gimli::Register> for Context {
     }
 }
 
-#[naked]
-pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
+#[naked_function::naked]
+pub unsafe extern  "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     // No need to save caller-saved registers here.
-    unsafe {
-        asm!(
-            "
-            sub rsp, 0x98
-            mov [rsp + 0x18], rbx
-            mov [rsp + 0x30], rbp
+    asm!(
+        "
+        sub rsp, 0x98
+        mov [rsp + 0x18], rbx
+        mov [rsp + 0x30], rbp
 
-            /* Adjust the stack to account for the return address */
-            lea rax, [rsp + 0xA0]
-            mov [rsp + 0x38], rax
+        /* Adjust the stack to account for the return address */
+        lea rax, [rsp + 0xA0]
+        mov [rsp + 0x38], rax
 
-            mov [rsp + 0x60], r12
-            mov [rsp + 0x68], r13
-            mov [rsp + 0x70], r14
-            mov [rsp + 0x78], r15
+        mov [rsp + 0x60], r12
+        mov [rsp + 0x68], r13
+        mov [rsp + 0x70], r14
+        mov [rsp + 0x78], r15
 
-            /* Return address */
-            mov rax, [rsp + 0x98]
-            mov [rsp + 0x80], rax
+        /* Return address */
+        mov rax, [rsp + 0x98]
+        mov [rsp + 0x80], rax
 
-            stmxcsr [rsp + 0x88]
-            fnstcw [rsp + 0x90]
+        stmxcsr [rsp + 0x88]
+        fnstcw [rsp + 0x90]
 
-            mov rax, rdi
-            mov rdi, rsp
-            call rax
-            add rsp, 0x98
-            ret
-            ",
-            options(noreturn)
-        );
-    }
+        mov rax, rdi
+        mov rdi, rsp
+        call rax
+        add rsp, 0x98
+        ret
+        "
+    );
 }
 
-#[naked]
+#[naked_function::naked]
 pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
-    unsafe {
         asm!(
             "
             /* Restore stack */
@@ -133,8 +128,6 @@ pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
             mov rdi, [rdi + 0x28]
 
             ret
-            ",
-            options(noreturn)
+            "
         );
-    }
 }

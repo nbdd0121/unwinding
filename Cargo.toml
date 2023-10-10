@@ -16,6 +16,7 @@ libc = { version = "0.2", optional = true }
 spin = { version = "0.9.8", optional = true, default-features = false, features = ["mutex", "spin_mutex"] }
 core = { version = '1.0.0', optional = true, package = 'rustc-std-workspace-core' }
 compiler_builtins = { version = "0.1.2", optional = true }
+naked-function = "0.1.5"
 
 [features]
 alloc = []

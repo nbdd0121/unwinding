@@ -1,4 +1,3 @@
-use core::arch::asm;
 use core::fmt;
 use core::ops;
 use gimli::{Register, RiscV};
@@ -168,75 +167,71 @@ macro_rules! code {
     };
 }
 
-#[naked]
-pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
+#[cfg(target_feature = "d")]
+#[naked_function::naked]
+pub unsafe extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     // No need to save caller-saved registers here.
-    #[cfg(target_feature = "d")]
-    unsafe {
-        asm!(
-            "
-            mv t0, sp
-            add sp, sp, -0x210
-            sd ra, 0x200(sp)
-            ",
-            code!(save_gp),
-            code!(save_fp),
-            "
-            mv t0, a0
-            mv a0, sp
-            jalr t0
-            ld ra, 0x200(sp)
-            add sp, sp, 0x210
-            ret
-            ",
-            options(noreturn)
-        );
-    }
-    #[cfg(not(target_feature = "d"))]
-    unsafe {
-        asm!(
-            "
-            mv t0, sp
-            add sp, sp, -0x110
-            sd ra, 0x100(sp)
-            ",
-            code!(save_gp),
-            "
-            mv t0, a0
-            mv a0, sp
-            jalr t0
-            ld ra, 0x100(sp)
-            add sp, sp, 0x110
-            ret
-            ",
-            options(noreturn)
-        );
-    }
+    asm!(
+        "
+        mv t0, sp
+        add sp, sp, -0x210
+        sd ra, 0x200(sp)
+        ",
+        code!(save_gp),
+        code!(save_fp),
+        "
+        mv t0, a0
+        mv a0, sp
+        jalr t0
+        ld ra, 0x200(sp)
+        add sp, sp, 0x210
+        ret
+        "
+    );
 }
 
-#[naked]
+#[cfg(not(target_feature = "d"))]
+#[naked_function::naked]
+pub unsafe extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
+    // No need to save caller-saved registers here.
+    asm!(
+        "
+        mv t0, sp
+        add sp, sp, -0x110
+        sd ra, 0x100(sp)
+        ",
+        code!(save_gp),
+        "
+        mv t0, a0
+        mv a0, sp
+        jalr t0
+        ld ra, 0x100(sp)
+        add sp, sp, 0x110
+        ret
+        "
+    );
+}
+
+#[cfg(target_feature = "d")]
+#[naked_function::naked]
 pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
-    #[cfg(target_feature = "d")]
-    unsafe {
-        asm!(
-            code!(restore_fp),
-            code!(restore_gp),
-            "
-            ld a0, 0x50(a0)
-            ret
-            ",
-            options(noreturn)
-        );
-    }
-    #[cfg(not(target_feature = "d"))]
-    unsafe {
-        asm!(
-            code!(restore_gp),
-            "
-            ld a0, 0x50(a0)
-            ret
-            ",
-            options(noreturn)
-        );
-    }
+    asm!(
+        code!(restore_fp),
+        code!(restore_gp),
+        "
+        ld a0, 0x50(a0)
+        ret
+        "
+    );
+}
+#[cfg(not(target_feature = "d"))]
+#[naked_function::naked]
+pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
+    asm!(
+        code!(restore_gp),
+        "
+        ld a0, 0x50(a0)
+        ret
+        "
+    );
 }

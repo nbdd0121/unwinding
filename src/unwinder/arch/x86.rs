@@ -55,7 +55,7 @@ impl ops::IndexMut<gimli::Register> for Context {
     }
 }
 
-#[naked]
+#[naked_function::naked]
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     // No need to save caller-saved registers here.
     unsafe {
@@ -96,7 +96,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
     }
 }
 
-#[naked]
+#[naked_function::naked]
 pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
     unsafe {
         asm!(

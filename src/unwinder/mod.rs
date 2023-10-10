@@ -39,8 +39,11 @@ fn with_context<T, F: FnOnce(&mut Context) -> T>(f: F) -> T {
     let mut data = Data {
         f: ManuallyDrop::new(f),
     };
-    save_context(delegate::<T, F>, ptr::addr_of_mut!(data).cast());
-    unsafe { ManuallyDrop::into_inner(data.t) }
+
+    unsafe {
+        save_context(delegate::<T, F>, ptr::addr_of_mut!(data).cast());
+        ManuallyDrop::into_inner(data.t)
+    }
 }
 
 #[repr(C)]

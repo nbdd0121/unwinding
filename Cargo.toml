@@ -11,7 +11,7 @@ repository = "https://github.com/nbdd0121/unwinding/"
 members = ["cdylib", "example"]
 
 [dependencies]
-gimli = { version = "0.26.1", default-features = false, features = ["read-core"] }
+gimli = { version = "0.28", default-features = false, features = ["read-core"] }
 libc = { version = "0.2", optional = true }
 spin = { version = "0.9.8", optional = true, default-features = false, features = ["mutex", "spin_mutex"] }
 core = { version = '1.0.0', optional = true, package = 'rustc-std-workspace-core' }

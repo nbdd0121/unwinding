@@ -3,8 +3,10 @@
 #![feature(naked_functions)]
 // lang_items is an internal feature. `internal_features` lint is added recently
 // so also allow unknown lints to prevent warning in older nightly versions.
-#![allow(unknown_lints)]
-#![allow(internal_features)]
+#![cfg_attr(
+    any(feature = "personality", feature = "personality-dummy"),
+    allow(internal_features)
+)]
 #![cfg_attr(
     any(feature = "personality", feature = "personality-dummy"),
     feature(lang_items)

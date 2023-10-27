@@ -25,7 +25,7 @@ pub use libc::c_int;
 pub type c_int = i32;
 
 #[cfg(all(
-    any(feature = "panicking", feature = "panic-handler-dummy"),
+    any(feature = "panic", feature = "panic-handler-dummy"),
     feature = "libc"
 ))]
 pub fn abort() -> ! {
@@ -33,7 +33,7 @@ pub fn abort() -> ! {
 }
 
 #[cfg(all(
-    any(feature = "panicking", feature = "panic-handler-dummy"),
+    any(feature = "panic", feature = "panic-handler-dummy"),
     not(feature = "libc")
 ))]
 pub fn abort() -> ! {

@@ -8,7 +8,12 @@ description = "Unwinding library in Rust and for Rust"
 repository = "https://github.com/nbdd0121/unwinding/"
 
 [workspace]
-members = ["cdylib", "example"]
+members = [
+    "cdylib",
+    "test_crates/throw_and_catch",
+    "test_crates/catch_std_exception",
+    "test_crates/std_catch_exception",
+]
 
 [dependencies]
 gimli = { version = "0.28", default-features = false, features = ["read-core"] }

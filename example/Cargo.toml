@@ -1,8 +1,0 @@
-[package]
-name = "example"
-version = "0.1.0"
-edition = "2018"
-
-[dependencies]
-unwinding = { path = "../", features = ["system-alloc", "personality", "panic-handler"] }
-libc = "0.2"

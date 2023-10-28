@@ -28,13 +28,8 @@ jobs:
       with:
         target: ${{ matrix.target }}
 
-    - name: Build example binary
+    - name: Build library
       run: cargo build --release $BUILD_STD
 
-    - name: Run example binary
-      run: (cargo run --release $BUILD_STD 2>&1 | tee ../run.log) || true
-      working-directory: example
-
-    - name: Check log
-      run: |
-        grep -Pz 'panicked at example/src/main.rs:36:5:\npanic\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ndropped: "string"\ncaught\npanicked at example/src/main.rs:46:5:\npanic\npanicked at example/src/main.rs:25:9:\npanic on drop\n( *\d+:.*\n)+thread panicked while processing panic\. aborting\.' run.log
+    - name: Run tests
+      run: cargo test --release $BUILD_STD

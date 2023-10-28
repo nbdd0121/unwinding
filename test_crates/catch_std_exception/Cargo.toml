@@ -1,0 +1,8 @@
+[package]
+name = "catch_std_exception"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+unwinding = { path = "../../", features = ["panic"] }
+libc = "0.2"

@@ -176,7 +176,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         asm!(
             "
             mv t0, sp
-            add sp, sp, -0x188
+            add sp, sp, -0x190
             sw ra, 0x180(sp)
             ",
             code!(save_gp),
@@ -186,7 +186,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             mv a0, sp
             jalr t0
             lw ra, 0x180(sp)
-            add sp, sp, 0x188
+            add sp, sp, 0x190
             ret
             ",
             options(noreturn)
@@ -197,7 +197,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         asm!(
             "
             mv t0, sp
-            add sp, sp, -0x88
+            add sp, sp, -0x90
             sw ra, 0x80(sp)
             ",
             code!(save_gp),
@@ -206,7 +206,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             mv a0, sp
             jalr t0
             lw ra, 0x80(sp)
-            add sp, sp, 0x88
+            add sp, sp, 0x90
             ret
             ",
             options(noreturn)

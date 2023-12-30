@@ -96,13 +96,10 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
     }
 }
 
-#[naked]
-pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
+pub unsafe fn restore_context(ctx: &Context) -> ! {
     unsafe {
         asm!(
             "
-            mov edx, [esp + 4]
-
             /* Restore stack */
             mov esp, [edx + 16]
 
@@ -130,6 +127,7 @@ pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
 
             ret
             ",
+            in("edx") ctx,
             options(noreturn)
         );
     }

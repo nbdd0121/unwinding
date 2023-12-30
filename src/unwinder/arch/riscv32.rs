@@ -214,8 +214,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
     }
 }
 
-#[naked]
-pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
+pub unsafe fn restore_context(ctx: &Context) -> ! {
     #[cfg(target_feature = "d")]
     unsafe {
         asm!(
@@ -225,6 +224,7 @@ pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
             lw a0, 0x28(a0)
             ret
             ",
+            in("a0") ctx,
             options(noreturn)
         );
     }
@@ -236,6 +236,7 @@ pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
             lw a0, 0x28(a0)
             ret
             ",
+            in("a0") ctx,
             options(noreturn)
         );
     }

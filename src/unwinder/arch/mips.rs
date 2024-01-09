@@ -144,7 +144,7 @@ impl MIPS {
 }
 
 // Match DWARF_FRAME_REGISTERS in libgcc
-pub const MAX_REG_RULES: usize = 128;
+pub const MAX_REG_RULES: usize = 188;
 
 #[repr(C)]
 #[derive(Clone, Default)]
@@ -160,7 +160,10 @@ impl fmt::Debug for Context {
             fmt.field(MIPS::register_name(Register(i as _)).unwrap(), &self.gp[i]);
         }
         for i in 32..=63 {
-            fmt.field(MIPS::register_name(Register(i as _)).unwrap(), &self.fp[i]);
+            fmt.field(
+                MIPS::register_name(Register(i as _)).unwrap(),
+                &self.fp[i - 32],
+            );
         }
         fmt.finish()
     }
@@ -191,109 +194,134 @@ impl ops::IndexMut<gimli::Register> for Context {
 macro_rules! code {
     (save_gp) => {
         "
-        sw $zero, 0x00($sp)
-        sw $ra, 0x04($sp)
-        sw $gp, 0x08($sp)
-        sw $v0, 0x0C($sp)
-        sw $v1, 0x10($sp)
-        sw $t0, 0x14($sp)
-        sw $s0, 0x18($sp)
-        sw $s1, 0x1C($sp)
-        sw $s2, 0x20($sp)
-        sw $s3, 0x24($sp)
-        sw $s4, 0x28($sp)
-        sw $s5, 0x2C($sp)
-        sw $s6, 0x30($sp)
-        sw $s7, 0x34($sp)
+        sw $zero,   0x00($sp)
+        sw $ra,     0x7C($sp)
+        sw $gp,     0x70($sp)
+        sw $v0,     0x08($sp)
+        sw $v1,     0x0C($sp)
+        sw $a0,     0x10($sp)
+        sw $a1,     0x14($sp)
+        sw $a2,     0x18($sp)
+        sw $a3,     0x1C($sp)
+        sw $t0,     0x20($sp)
+        sw $t1,     0x24($sp)
+        sw $t2,     0x28($sp)
+        sw $t3,     0x2C($sp)
+        sw $t4,     0x30($sp)
+        sw $t5,     0x34($sp)
+        sw $t6,     0x38($sp)
+        sw $t7,     0x3C($sp)
+        sw $s0,     0x40($sp)
+        sw $s1,     0x44($sp)
+        sw $s2,     0x48($sp)
+        sw $s3,     0x4C($sp)
+        sw $s4,     0x50($sp)
+        sw $s5,     0x54($sp)
+        sw $s6,     0x58($sp)
+        sw $s7,     0x5C($sp)
+        sw $t8,     0x60($sp)
+        sw $t9,     0x64($sp)
         "
     };
     (save_fp) => {
         "
-        swc1 $f0, 0x38($sp)
-        swc1 $f1, 0x3C($sp)
-        swc1 $f2, 0x40($sp)
-        swc1 $f3, 0x44($sp)
-        swc1 $f4, 0x48($sp)
-        swc1 $f5, 0x4C($sp)
-        swc1 $f6, 0x50($sp)
-        swc1 $f7, 0x54($sp)
-        swc1 $f8, 0x58($sp)
-        swc1 $f9, 0x5C($sp)
-        swc1 $f10, 0x60($sp)
-        swc1 $f11, 0x64($sp)
-        swc1 $f12, 0x68($sp)
-        swc1 $f13, 0x6C($sp)
-        swc1 $f14, 0x70($sp)
-        swc1 $f15, 0x74($sp)
-        swc1 $f16, 0x78($sp)
-        swc1 $f17, 0x7C($sp)
-        swc1 $f18, 0x80($sp)
-        swc1 $f19, 0x84($sp)
-        swc1 $f20, 0x88($sp)
-        swc1 $f21, 0x8C($sp)
-        swc1 $f22, 0x90($sp)
-        swc1 $f23, 0x94($sp)
-        swc1 $f24, 0x98($sp)
-        swc1 $f25, 0x9C($sp)
-        swc1 $f26, 0xA0($sp)
-        swc1 $f27, 0xA4($sp)
-        swc1 $f28, 0xA8($sp)
-        swc1 $f29, 0xAC($sp)
-        swc1 $f30, 0xB0($sp)
-        swc1 $f31, 0xB4($sp)
+        swc1 $f0,   0x80($sp)
+        swc1 $f1,   0x84($sp)
+        swc1 $f2,   0x88($sp)
+        swc1 $f3,   0x8C($sp)
+        swc1 $f4,   0x90($sp)
+        swc1 $f5,   0x94($sp)
+        swc1 $f6,   0x98($sp)
+        swc1 $f7,   0x9C($sp)
+        swc1 $f8,   0xA0($sp)
+        swc1 $f9,   0xA4($sp)
+        swc1 $f10,  0xA8($sp)
+        swc1 $f11,  0xAC($sp)
+        swc1 $f12,  0xB0($sp)
+        swc1 $f13,  0xB4($sp)
+        swc1 $f14,  0xB8($sp)
+        swc1 $f15,  0xBC($sp)
+        swc1 $f16,  0xC0($sp)
+        swc1 $f17,  0xC4($sp)
+        swc1 $f18,  0xC8($sp)
+        swc1 $f19,  0xCC($sp)
+        swc1 $f20,  0xD0($sp)
+        swc1 $f21,  0xD4($sp)
+        swc1 $f22,  0xD8($sp)
+        swc1 $f23,  0xDC($sp)
+        swc1 $f24,  0xE0($sp)
+        swc1 $f25,  0xE4($sp)
+        swc1 $f26,  0xE8($sp)
+        swc1 $f27,  0xEC($sp)
+        swc1 $f28,  0xF0($sp)
+        swc1 $f29,  0xF4($sp)
+        swc1 $f30,  0xF8($sp)
+        swc1 $f31,  0xFC($sp)
         "
     };
     (restore_gp) => {
         "
-        lw $ra, 0x04($sp)
-        lw $gp, 0x08($sp)
-        lw $v0, 0x0C($sp)
-        lw $v1, 0x10($sp)
-        lw $t0, 0x14($sp)
-        lw $s0, 0x18($sp)
-        lw $s1, 0x1C($sp)
-        lw $s2, 0x20($sp)
-        lw $s3, 0x24($sp)
-        lw $s4, 0x28($sp)
-        lw $s5, 0x2C($sp)
-        lw $s6, 0x30($sp)
-        lw $s7, 0x34($sp)
+        lw $ra,     0x7C($a0)
+        lw $gp,     0x70($a0)
+        lw $v0,     0x08($a0)
+        lw $v1,     0x0C($a0)
+        lw $a1,     0x14($a0)
+        lw $a2,     0x18($a0)
+        lw $a3,     0x1C($a0)
+        lw $t0,     0x20($a0)
+        lw $t1,     0x24($a0)
+        lw $t2,     0x28($a0)
+        lw $t3,     0x2C($a0)
+        lw $t4,     0x30($a0)
+        lw $t5,     0x34($a0)
+        lw $t6,     0x38($a0)
+        lw $t7,     0x3C($a0)
+        lw $s0,     0x40($a0)
+        lw $s1,     0x44($a0)
+        lw $s2,     0x48($a0)
+        lw $s3,     0x4C($a0)
+        lw $s4,     0x50($a0)
+        lw $s5,     0x54($a0)
+        lw $s6,     0x58($a0)
+        lw $s7,     0x5C($a0)
+        lw $t8,     0x60($a0)
+        lw $t9,     0x64($a0)
         "
     };
     (restore_fp) => {
         "
-        lwc1 $f0, 0x38($v0)
-        lwc1 $f1, 0x3C($v0)
-        lwc1 $f2, 0x40($v0)
-        lwc1 $f3, 0x44($v0)
-        lwc1 $f4, 0x48($v0)
-        lwc1 $f5, 0x4C($v0)
-        lwc1 $f6, 0x50($v0)
-        lwc1 $f7, 0x54($v0)
-        lwc1 $f8, 0x58($v0)
-        lwc1 $f9, 0x5C($v0)
-        lwc1 $f10, 0x60($v0)
-        lwc1 $f11, 0x64($v0)
-        lwc1 $f12, 0x68($v0)
-        lwc1 $f13, 0x6C($v0)
-        lwc1 $f14, 0x70($v0)
-        lwc1 $f15, 0x74($v0)
-        lwc1 $f16, 0x78($v0)
-        lwc1 $f17, 0x7C($v0)
-        lwc1 $f18, 0x80($v0)
-        lwc1 $f19, 0x84($v0)
-        lwc1 $f20, 0x88($v0)
-        lwc1 $f21, 0x8C($v0)
-        lwc1 $f22, 0x90($v0)
-        lwc1 $f23, 0x94($v0)
-        lwc1 $f24, 0x98($v0)
-        lwc1 $f25, 0x9C($v0)
-        lwc1 $f26, 0xA0($v0)
-        lwc1 $f27, 0xA4($v0)
-        lwc1 $f28, 0xA8($v0)
-        lwc1 $f29, 0xAC($v0)
-        lwc1 $f30, 0xB0($v0)
-        lwc1 $f31, 0xB4($v0)
+        lwc1 $f0,   0x80($a0)
+        lwc1 $f1,   0x84($a0)
+        lwc1 $f2,   0x88($a0)
+        lwc1 $f3,   0x8C($a0)
+        lwc1 $f4,   0x90($a0)
+        lwc1 $f5,   0x94($a0)
+        lwc1 $f6,   0x98($a0)
+        lwc1 $f7,   0x9C($a0)
+        lwc1 $f8,   0xA0($a0)
+        lwc1 $f9,   0xA4($a0)
+        lwc1 $f10,  0xA8($a0)
+        lwc1 $f11,  0xAC($a0)
+        lwc1 $f12,  0xB0($a0)
+        lwc1 $f13,  0xB4($a0)
+        lwc1 $f14,  0xB8($a0)
+        lwc1 $f15,  0xBC($a0)
+        lwc1 $f16,  0xC0($a0)
+        lwc1 $f17,  0xC4($a0)
+        lwc1 $f18,  0xC8($a0)
+        lwc1 $f19,  0xCC($a0)
+        lwc1 $f20,  0xD0($a0)
+        lwc1 $f21,  0xD4($a0)
+        lwc1 $f22,  0xD8($a0)
+        lwc1 $f23,  0xDC($a0)
+        lwc1 $f24,  0xE0($a0)
+        lwc1 $f25,  0xE4($a0)
+        lwc1 $f26,  0xE8($a0)
+        lwc1 $f27,  0xEC($a0)
+        lwc1 $f28,  0xF0($a0)
+        lwc1 $f29,  0xF4($a0)
+        lwc1 $f30,  0xF8($a0)
+        lwc1 $f31,  0xFC($a0)
         "
     };
 }
@@ -305,7 +333,6 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             "
             move $t0, $sp
             add $sp, $sp, -0x100
-            sw $ra, 0xB8($sp)
             ",
             code!(save_gp),
             code!(save_fp),
@@ -313,7 +340,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             move $t0, $a0
             move $a0, $sp
             jalr $t0
-            lw $ra, 0xB8($sp)
+            lw $ra, 0x7C($sp)
             add $sp, $sp, 0x100
             jr $ra
             ",
@@ -329,7 +356,7 @@ pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
             code!(restore_fp),
             code!(restore_gp),
             "
-            lw $v0, 0x28($a0)
+            lw $a0, 0x10($sp)
             jr $ra
             ",
             options(noreturn)

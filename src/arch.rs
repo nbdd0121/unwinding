@@ -70,11 +70,30 @@ mod aarch64 {
 #[cfg(target_arch = "aarch64")]
 pub use aarch64::*;
 
+#[cfg(target_arch = "mips")]
+mod mips {
+    use gimli::Register;
+
+    pub struct Arch;
+
+    #[allow(unused)]
+    impl Arch {
+        pub const SP: Register = Register(29);
+        pub const RA: Register = Register(31);
+
+        pub const UNWIND_DATA_REG: (Register, Register) = (Register(4), Register(5));
+        pub const UNWIND_PRIVATE_DATA_SIZE: usize = 2;
+    }
+}
+#[cfg(target_arch = "mips")]
+pub use mips::*;
+
 #[cfg(not(any(
     target_arch = "x86_64",
     target_arch = "x86",
     target_arch = "riscv64",
     target_arch = "riscv32",
-    target_arch = "aarch64"
+    target_arch = "aarch64",
+    target_arch = "mips",
 )))]
 compile_error!("Current architecture is not supported");

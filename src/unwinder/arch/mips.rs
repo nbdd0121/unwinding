@@ -251,6 +251,7 @@ macro_rules! code {
     };
     (restore_gp) => {
         "
+        .set noat
         lw $at,     0x04($a0)
         lw $v0,     0x08($a0)
         lw $v1,     0x0C($a0)

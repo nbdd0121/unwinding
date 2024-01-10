@@ -199,10 +199,6 @@ macro_rules! code {
     (save_gp) => {
         "
         sw $zero,   0x00($sp)
-        sw $ra,     0x7C($sp)
-        sw $gp,     0x70($sp)
-        sw $v0,     0x08($sp)
-        sw $v1,     0x0C($sp)
         sw $a0,     0x10($sp)
         sw $a1,     0x14($sp)
         sw $a2,     0x18($sp)
@@ -225,6 +221,10 @@ macro_rules! code {
         sw $s7,     0x5C($sp)
         sw $t8,     0x60($sp)
         sw $t9,     0x64($sp)
+        sw $gp,     0x70($sp)
+        sw $sp,     0x74($sp)
+        sw $fp,     0x78($sp)
+        sw $ra,     0x7C($sp)
         "
     };
     (save_fp) => {
@@ -265,10 +265,6 @@ macro_rules! code {
     };
     (restore_gp) => {
         "
-        lw $ra,     0x7C($a0)
-        lw $gp,     0x70($a0)
-        lw $v0,     0x08($a0)
-        lw $v1,     0x0C($a0)
         lw $a1,     0x14($a0)
         lw $a2,     0x18($a0)
         lw $a3,     0x1C($a0)
@@ -290,6 +286,10 @@ macro_rules! code {
         lw $s7,     0x5C($a0)
         lw $t8,     0x60($a0)
         lw $t9,     0x64($a0)
+        lw $gp,     0x70($a0)
+        lw $sp,     0x74($a0)
+        lw $fp,     0x78($a0)
+        lw $ra,     0x7C($a0)
         "
     };
     (restore_fp) => {

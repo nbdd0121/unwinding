@@ -207,6 +207,8 @@ macro_rules! code {
         sw $s5,     0x54($sp)
         sw $s6,     0x58($sp)
         sw $s7,     0x5C($sp)
+        sw $k0,     0x68($sp)
+        sw $k1,     0x6C($sp)
         sw $gp,     0x70($sp)
         sw $t0,     0x74($sp)
         sw $fp,     0x78($sp)
@@ -251,7 +253,6 @@ macro_rules! code {
     };
     (restore_gp) => {
         "
-        .set noat
         lw $at,     0x04($a0)
         lw $v0,     0x08($a0)
         lw $v1,     0x0C($a0)
@@ -328,6 +329,9 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         #[cfg(target_feature = "single-float")]
         asm!(
             "
+            .set noreorder
+            .set nomacro
+            .set noat
             move $t0, $sp
             add $sp, $sp, -0x110
             sw $ra, 0x100($sp)
@@ -335,30 +339,45 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             code!(save_gp),
             code!(save_fp),
             "
-            move $t0, $a0
+            move $t9, $a0
             move $a0, $sp
-            jalr $t0
+            /* jalr must use $t9 in PIE code */
+            jalr $t9
+            nop
             lw $ra, 0x100($sp)
             add $sp, $sp, 0x110
             jr $ra
+            nop
+            .set at
+            .set macro
+            .set reorder
             ",
             options(noreturn)
         );
         #[cfg(not(target_feature = "single-float"))]
         asm!(
             "
+            .set noreorder
+            .set nomacro
+            .set noat
             move $t0, $sp
             add $sp, $sp, -0x90
             sw $ra, 0x80($sp)
             ",
             code!(save_gp),
             "
-            move $t0, $a0
+            move $t9, $a0
             move $a0, $sp
-            jalr $t0
+            /* jalr must use $t9 in PIE code */
+            jalr $t9
+            nop
             lw $ra, 0x80($sp)
             add $sp, $sp, 0x90
             jr $ra
+            nop
+            .set at
+            .set macro
+            .set reorder
             ",
             options(noreturn)
         );
@@ -370,20 +389,38 @@ pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
     unsafe {
         #[cfg(target_feature = "single-float")]
         asm!(
+            "
+            .set noreorder
+            .set nomacro
+            .set noat
+            ",
             code!(restore_fp),
             code!(restore_gp),
             "
-            lw $a0, 0x10($sp)
+            lw $a0, 0x10($a0)
             jr $ra
+            nop
+            .set at
+            .set macro
+            .set reorder
             ",
             options(noreturn)
         );
         #[cfg(not(target_feature = "single-float"))]
         asm!(
+            "
+            .set noreorder
+            .set nomacro
+            .set noat
+            ",
             code!(restore_gp),
             "
-            lw $a0, 0x10($sp)
+            lw $a0, 0x10($a0)
             jr $ra
+            nop
+            .set at
+            .set macro
+            .set reorder
             ",
             options(noreturn)
         );

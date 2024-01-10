@@ -150,6 +150,7 @@ pub const MAX_REG_RULES: usize = 188;
 #[derive(Clone, Default)]
 pub struct Context {
     pub gp: [usize; 32],
+    #[cfg(target_feature = "single-float")]
     pub fp: [usize; 32],
 }
 
@@ -159,6 +160,7 @@ impl fmt::Debug for Context {
         for i in 0..=31 {
             fmt.field(MIPS::register_name(Register(i as _)).unwrap(), &self.gp[i]);
         }
+        #[cfg(target_feature = "single-float")]
         for i in 32..=63 {
             fmt.field(
                 MIPS::register_name(Register(i as _)).unwrap(),
@@ -175,6 +177,7 @@ impl ops::Index<Register> for Context {
     fn index(&self, reg: Register) -> &usize {
         match reg {
             Register(0..=31) => &self.gp[reg.0 as usize],
+            #[cfg(target_feature = "single-float")]
             Register(32..=63) => &self.fp[(reg.0 - 32) as usize],
             _ => unimplemented!(),
         }
@@ -185,6 +188,7 @@ impl ops::IndexMut<gimli::Register> for Context {
     fn index_mut(&mut self, reg: Register) -> &mut usize {
         match reg {
             Register(0..=31) => &mut self.gp[reg.0 as usize],
+            #[cfg(target_feature = "single-float")]
             Register(32..=63) => &mut self.fp[(reg.0 - 32) as usize],
             _ => unimplemented!(),
         }
@@ -329,6 +333,7 @@ macro_rules! code {
 #[naked]
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     unsafe {
+        #[cfg(target_feature = "single-float")]
         asm!(
             "
             move $t0, $sp
@@ -346,14 +351,41 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             ",
             options(noreturn)
         );
+        #[cfg(not(target_feature = "single-float"))]
+        asm!(
+            "
+            move $t0, $sp
+            add $sp, $sp, -0x80
+            ",
+            code!(save_gp),
+            "
+            move $t0, $a0
+            move $a0, $sp
+            jalr $t0
+            lw $ra, 0x7C($sp)
+            add $sp, $sp, 0x80
+            jr $ra
+            ",
+            options(noreturn)
+        );
     }
 }
 
 #[naked]
 pub unsafe extern "C" fn restore_context(ctx: &Context) -> ! {
     unsafe {
+        #[cfg(target_feature = "single-float")]
         asm!(
             code!(restore_fp),
+            code!(restore_gp),
+            "
+            lw $a0, 0x10($sp)
+            jr $ra
+            ",
+            options(noreturn)
+        );
+        #[cfg(not(target_feature = "single-float"))]
+        asm!(
             code!(restore_gp),
             "
             lw $a0, 0x10($sp)

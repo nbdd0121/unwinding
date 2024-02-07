@@ -63,10 +63,10 @@ impl ops::IndexMut<gimli::Register> for Context {
 }
 
 #[naked]
-#[cfg(target_abi = "softfloat")]
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     // No need to save caller-saved registers here.
     unsafe {
+        #[cfg(target_abi = "softfloat")]
         asm!(
             "
             stp x29, x30, [sp, -16]!
@@ -91,14 +91,8 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             ",
             options(noreturn)
         );
-    }
-}
 
-#[naked]
-#[cfg(not(target_abi = "softfloat"))]
-pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
-    // No need to save caller-saved registers here.
-    unsafe {
+        #[cfg(not(target_abi = "softfloat"))]
         asm!(
             "
             stp x29, x30, [sp, -16]!
@@ -131,9 +125,9 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
     }
 }
 
-#[cfg(target_abi = "softfloat")]
 pub unsafe fn restore_context(ctx: &Context) -> ! {
     unsafe {
+        #[cfg(target_abi = "softfloat")]
         asm!(
             "
             ldp x2, x3, [x0, 0x10]
@@ -159,12 +153,8 @@ pub unsafe fn restore_context(ctx: &Context) -> ! {
             in("x0") ctx,
             options(noreturn)
         );
-    }
-}
 
-#[cfg(not(target_abi = "softfloat"))]
-pub unsafe fn restore_context(ctx: &Context) -> ! {
-    unsafe {
+        #[cfg(not(target_abi = "softfloat"))]
         asm!(
             "
             ldp d0, d1, [x0, 0x100]

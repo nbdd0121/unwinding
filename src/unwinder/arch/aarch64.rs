@@ -131,7 +131,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
     }
 }
 
-#[cfg(not(target_abi = "softfloat"))]
+#[cfg(target_abi = "softfloat")]
 pub unsafe fn restore_context(ctx: &Context) -> ! {
     unsafe {
         asm!(
@@ -162,7 +162,7 @@ pub unsafe fn restore_context(ctx: &Context) -> ! {
     }
 }
 
-#[cfg(target_abi = "softfloat")]
+#[cfg(not(target_abi = "softfloat"))]
 pub unsafe fn restore_context(ctx: &Context) -> ! {
     unsafe {
         asm!(

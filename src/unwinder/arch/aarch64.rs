@@ -60,6 +60,7 @@ impl ops::IndexMut<gimli::Register> for Context {
 
 macro_rules! save {
     (gp$(, $fp:ident)?) => {
+        // No need to save caller-saved registers here.
         asm!(
             "
             stp x29, x30, [sp, -16]!
@@ -100,7 +101,6 @@ macro_rules! save {
 
 #[naked]
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
-    // No need to save caller-saved registers here.
     unsafe {
         #[cfg(target_feature = "fp-armv8")]
         save!(gp, fp);

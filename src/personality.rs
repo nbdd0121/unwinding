@@ -25,7 +25,7 @@ fn parse_pointer_encoding(input: &mut StaticSlice) -> gimli::Result<constants::D
     if eh_pe.is_valid_encoding() {
         Ok(eh_pe)
     } else {
-        Err(gimli::Error::UnknownPointerEncoding)
+        Err(gimli::Error::UnknownPointerEncoding(eh_pe))
     }
 }
 

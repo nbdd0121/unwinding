@@ -102,9 +102,9 @@ macro_rules! save {
 #[naked]
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     unsafe {
-        #[cfg(target_feature = "fp-armv8")]
+        #[cfg(target_feature = "neon")]
         save!(gp, fp);
-        #[cfg(not(target_feature = "fp-armv8"))]
+        #[cfg(not(target_feature = "neon"))]
         save!(gp);
     }
 }
@@ -163,9 +163,9 @@ macro_rules! restore {
 
 pub unsafe fn restore_context(ctx: &Context) -> ! {
     unsafe {
-        #[cfg(target_feature = "fp-armv8")]
+        #[cfg(target_feature = "neon")]
         restore!(ctx, gp, fp);
-        #[cfg(not(target_feature = "fp-armv8"))]
+        #[cfg(not(target_feature = "neon"))]
         restore!(ctx, gp);
     }
 }

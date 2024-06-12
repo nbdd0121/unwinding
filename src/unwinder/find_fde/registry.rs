@@ -48,7 +48,7 @@ unsafe fn lock_global_state() -> impl ops::DerefMut<Target = GlobalState> {
         impl ops::Deref for LockGuard {
             type Target = GlobalState;
 
-            #[allow(static_mut_ref)]
+            #[allow(static_mut_refs)]
             fn deref(&self) -> &GlobalState {
                 unsafe { &*core::ptr::addr_of!(STATE) }
             }

@@ -18,9 +18,9 @@ checksum = "01a6d58e9c3408138099a396a98fd0d0e6cfb25d723594d2ae48b5004513fd5b"
 
 [[package]]
 name = "gimli"
-version = "0.28.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
+checksum = "e2e1d97fbe9722ba9bbd0c97051c2956e726562b61f86a25a4360398a40edfc9"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",

@@ -1,6 +1,6 @@
 [package]
 name = "unwinding"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Gary Guo <gary@garyguo.net>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"

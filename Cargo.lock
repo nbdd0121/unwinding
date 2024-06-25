@@ -12,9 +12,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.101"
+version = "0.1.112"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01a6d58e9c3408138099a396a98fd0d0e6cfb25d723594d2ae48b5004513fd5b"
+checksum = "b15acab2bb4fe4dad1f1e31f3d9e714f50ef561a0f87dd8a9da004f14d455e1a"
 
 [[package]]
 name = "gimli"
@@ -29,9 +29,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.149"
+version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
+checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
 name = "rustc-std-workspace-alloc"

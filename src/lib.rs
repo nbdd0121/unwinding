@@ -1,5 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![feature(c_unwind)]
 #![feature(naked_functions)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 // lang_items is an internal feature. `internal_features` lint is added recently

@@ -177,7 +177,9 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             "
             mv t0, sp
             add sp, sp, -0x190
+            .cfi_def_cfa_offset 0x190
             sw ra, 0x180(sp)
+            .cfi_offset ra, -16
             ",
             code!(save_gp),
             code!(save_fp),
@@ -187,6 +189,8 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             jalr t0
             lw ra, 0x180(sp)
             add sp, sp, 0x190
+            .cfi_def_cfa_offset 0
+            .cfi_restore ra
             ret
             ",
             options(noreturn)
@@ -198,7 +202,9 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             "
             mv t0, sp
             add sp, sp, -0x90
+            .cfi_def_cfa_offset 0x90
             sw ra, 0x80(sp)
+            .cfi_offset ra, -16
             ",
             code!(save_gp),
             "
@@ -207,6 +213,8 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             jalr t0
             lw ra, 0x80(sp)
             add sp, sp, 0x90
+            .cfi_def_cfa_offset 0
+            .cfi_restore ra
             ret
             ",
             options(noreturn)

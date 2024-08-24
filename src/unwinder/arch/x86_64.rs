@@ -64,6 +64,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         asm!(
             "
             sub rsp, 0x98
+            .cfi_def_cfa_offset 0xA0
             mov [rsp + 0x18], rbx
             mov [rsp + 0x30], rbp
 
@@ -87,6 +88,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             mov rdi, rsp
             call rax
             add rsp, 0x98
+            .cfi_def_cfa_offset 8
             ret
             ",
             options(noreturn)

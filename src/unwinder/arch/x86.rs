@@ -62,6 +62,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         asm!(
             "
             sub esp, 52
+            .cfi_def_cfa_offset 56
 
             mov [esp + 4], ecx
             mov [esp + 8], edx
@@ -85,10 +86,13 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             mov eax, [esp + 60]
             mov ecx, esp
             push eax
+            .cfi_adjust_cfa_offset 4
             push ecx
+            .cfi_adjust_cfa_offset 4
             call [esp + 64]
 
             add esp, 60
+            .cfi_def_cfa_offset 4
             ret
             ",
             options(noreturn)

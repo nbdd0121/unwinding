@@ -64,7 +64,11 @@ macro_rules! save {
         asm!(
             "
             stp x29, x30, [sp, -16]!
+            .cfi_def_cfa_offset 16
+            .cfi_offset x29, -16
+            .cfi_offset x30, -8
             sub sp, sp, 512
+            .cfi_def_cfa_offset 528
             mov x8, x0
             mov x0, sp
             ",
@@ -82,7 +86,11 @@ macro_rules! save {
             blr x8
 
             add sp, sp, 512
+            .cfi_def_cfa_offset 16
             ldp x29, x30, [sp], 16
+            .cfi_def_cfa_offset 0
+            .cfi_restore x29
+            .cfi_restore x30
             ret
             ",
             options(noreturn)

@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![feature(naked_functions)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
+#![cfg_attr(target_arch = "mips", feature(asm_experimental_arch))]
 // lang_items is an internal feature. `internal_features` lint is added recently
 // so also allow unknown lints to prevent warning in older nightly versions.
 #![cfg_attr(

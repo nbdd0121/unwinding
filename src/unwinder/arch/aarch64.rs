@@ -1,4 +1,3 @@
-use core::arch::asm;
 use core::fmt;
 use core::ops;
 use gimli::{AArch64, Register};
@@ -61,7 +60,7 @@ impl ops::IndexMut<gimli::Register> for Context {
 macro_rules! save {
     (gp$(, $fp:ident)?) => {
         // No need to save caller-saved registers here.
-        asm!(
+        core::arch::naked_asm!(
             "
             stp x29, x30, [sp, -16]!
             .cfi_def_cfa_offset 16
@@ -93,7 +92,6 @@ macro_rules! save {
             .cfi_restore x30
             ret
             ",
-            options(noreturn)
         );
     };
     (maybesavefp(fp)) => {
@@ -119,7 +117,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
 
 macro_rules! restore {
     ($ctx:expr, gp$(, $fp:ident)?) => {
-        asm!(
+        core::arch::asm!(
             restore!(mayberestore($($fp)?)),
             "
             ldp x2, x3, [x0, 0x10]

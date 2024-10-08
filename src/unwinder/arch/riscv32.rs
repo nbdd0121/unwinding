@@ -1,4 +1,3 @@
-use core::arch::asm;
 use core::fmt;
 use core::ops;
 use gimli::{Register, RiscV};
@@ -173,7 +172,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
     // No need to save caller-saved registers here.
     #[cfg(target_feature = "d")]
     unsafe {
-        asm!(
+        core::arch::naked_asm!(
             "
             mv t0, sp
             add sp, sp, -0x190
@@ -193,12 +192,11 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             .cfi_restore ra
             ret
             ",
-            options(noreturn)
         );
     }
     #[cfg(not(target_feature = "d"))]
     unsafe {
-        asm!(
+        core::arch::naked_asm!(
             "
             mv t0, sp
             add sp, sp, -0x90
@@ -217,7 +215,6 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
             .cfi_restore ra
             ret
             ",
-            options(noreturn)
         );
     }
 }
@@ -225,7 +222,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
 pub unsafe fn restore_context(ctx: &Context) -> ! {
     #[cfg(target_feature = "d")]
     unsafe {
-        asm!(
+        core::arch::asm!(
             code!(restore_fp),
             code!(restore_gp),
             "
@@ -238,7 +235,7 @@ pub unsafe fn restore_context(ctx: &Context) -> ! {
     }
     #[cfg(not(target_feature = "d"))]
     unsafe {
-        asm!(
+        core::arch::asm!(
             code!(restore_gp),
             "
             lw a0, 0x28(a0)

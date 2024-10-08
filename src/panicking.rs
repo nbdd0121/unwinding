@@ -19,7 +19,7 @@ pub fn begin_panic<E: Exception>(exception: E) -> UnwindReasonCode {
 
     let ex = E::wrap(exception);
     unsafe {
-        (*ex).exception_class = u64::from_be_bytes(E::CLASS);
+        (*ex).exception_class = u64::from_ne_bytes(E::CLASS);
         (*ex).exception_cleanup = Some(exception_cleanup::<E>);
         _Unwind_RaiseException(ex)
     }
@@ -60,7 +60,7 @@ pub fn catch_unwind<E: Exception, R, F: FnOnce() -> R>(f: F) -> Result<R, Option
         unsafe {
             let data = &mut *(data as *mut ManuallyDrop<Option<E>>);
             let exception = exception as *mut UnwindException;
-            if (*exception).exception_class != u64::from_be_bytes(E::CLASS) {
+            if (*exception).exception_class != u64::from_ne_bytes(E::CLASS) {
                 _Unwind_DeleteException(exception);
                 *data = ManuallyDrop::new(None);
                 return;

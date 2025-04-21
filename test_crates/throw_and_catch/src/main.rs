@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(start)]
+#![no_main]
 
 extern crate alloc;
 extern crate unwinding;
@@ -46,8 +46,8 @@ fn main() {
     foo();
 }
 
-#[start]
-fn start(_argc: isize, _argv: *const *const u8) -> isize {
+#[unsafe(export_name = "main")]
+extern "C" fn start(_argc: isize, _argv: *const *const u8) -> isize {
     unwinding::panic::catch_unwind(|| {
         main();
         0

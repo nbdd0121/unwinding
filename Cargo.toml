@@ -2,10 +2,11 @@
 name = "unwinding"
 version = "0.2.5"
 authors = ["Gary Guo <gary@garyguo.net>"]
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Unwinding library in Rust and for Rust"
 repository = "https://github.com/nbdd0121/unwinding/"
+rust-version = "1.88"
 
 [workspace]
 members = [

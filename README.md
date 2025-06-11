@@ -55,7 +55,7 @@ Here are the feature gates related:
 | panic-handler | No      | Provides `#[panic_handler]`. Provides similar behaviour on panic to std, with `RUST_BACKTRACE` support as well. Stack trace won't have symbols though. Depends on libc. |
 | system-alloc  | No      | Provides a global allocator which calls `malloc` and friends. Provided for convience. |
 
-If you are writing a `#![no_std]` program, simply enable `personality`, `panic-handler` and `system-alloc` in addition to the defaults, you instantly obtains the ability to do unwinding! An example is given in the [`example/` folder](example).
+If you are writing a `#![no_std]` program, simply enable `personality`, `panic-handler` and `system-alloc` in addition to the defaults, you instantly obtains the ability to do unwinding! An example is given in the [here](test_crates/throw_and_catch/src/main.rs).
 
 ## Baremetal
 

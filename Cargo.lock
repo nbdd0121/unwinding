@@ -11,12 +11,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compiler_builtins"
-version = "0.1.139"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7925a77545f37a18e152a4aeaeb9a220309022067cafcfa2ecebe9ec55d36ccb"
-
-[[package]]
 name = "gimli"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -77,7 +71,6 @@ dependencies = [
 name = "unwinding"
 version = "0.2.7"
 dependencies = [
- "compiler_builtins",
  "gimli",
  "libc",
  "rustc-std-workspace-core",

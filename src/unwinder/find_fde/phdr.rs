@@ -33,7 +33,7 @@ impl super::FDEFinder for PhdrFinder {
 
 #[cfg(feature = "fde-phdr-aux")]
 fn search_aux_phdr(pc: usize) -> Option<FDESearchResult> {
-    use libc::{getauxval, AT_PHDR, AT_PHNUM, PT_PHDR};
+    use libc::{AT_PHDR, AT_PHNUM, PT_PHDR, getauxval};
 
     unsafe {
         let phdr = getauxval(AT_PHDR) as *const Elf_Phdr;

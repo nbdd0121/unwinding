@@ -162,6 +162,7 @@ macro_rules! ctx_helper {
 
 #[unsafe(naked)]
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
+    #[allow(unused_unsafe)]
     unsafe {
         core::arch::naked_asm!(
             maybe_cfi!(".cfi_startproc"),

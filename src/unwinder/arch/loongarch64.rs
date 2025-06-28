@@ -4,7 +4,8 @@ use gimli::{LoongArch, Register};
 
 use super::maybe_cfi;
 
-pub const MAX_REG_RULES: usize = 0; // TODO: find the GCC's MAX_REG_RULES for loongarch64
+// https://github.com/loongson/la-abi-specs/blob/release/ladwarf.adoc
+pub const MAX_REG_RULES: usize = 65;
 
 #[repr(C)]
 #[derive(Clone, Default)]
@@ -57,16 +58,61 @@ impl ops::IndexMut<gimli::Register> for Context {
 }
 
 macro_rules! save {
-    (gp$(, $fp:ident)?) => {
-        core::arch::naked_asm!("addi.d $r3, $r3, -16", "ret",);
+    (gp, fp) => {
+        core::arch::naked_asm!(
+            maybe_cfi!(".cfi_startproc"),
+            "addi.d $r3, $r3, -16",
+            maybe_cfi!(".cfi_def_cfa_offset 16"),
+            "st.d $r1, $r3, 0",
+            maybe_cfi!(".cfi_offset $r1, 0"),
+            "st.d $r22, $r3, 8",
+            maybe_cfi!(".cfi_offset $r22, 8"),
+            "addi.d $r3, $r3, -512",
+            maybe_cfi!(".cfi_def_cfa_offset 528"),
+            "
+            move $r8, $r4
+            move $r4, $r3
+            ",
+            save!(savefp),
+            "
+            st.d $r23, $r3, 0x18
+            st.d $r24, $r3, 0x20
+            st.d $r25, $r3, 0x28
+            st.d $r26, $r3, 0x30
+            st.d $r27, $r3, 0x38
+            st.d $r28, $r3, 0x40
+            st.d $r29, $r3, 0x48
+            st.d $r30, $r3, 0x50
+            st.d $r31, $r3, 0x58
+            addi.d $r2, $r3, 528
+            st.d $r2, $r3, 0x60
+
+            jirl $r1, $r8, 0
+
+            addi.d $r3, $r3, 512
+            ",
+            maybe_cfi!(".cfi_def_cfa_offset 16"),
+            "ld.d $r1, $r3, 0",
+            maybe_cfi!(".cfi_restore $r1"),
+            "ld.d $r22, $r3, 8",
+            maybe_cfi!(".cfi_restore $r22"),
+            "addi.d $r3, $r3, 16",
+            maybe_cfi!(".cfi_def_cfa_offset 0"),
+            "ret",
+            maybe_cfi!(".cfi_endproc"),
+        );
     };
-    (maybesavefp(fp)) => {
+    (savefp) => {
         "
-        fst.d $f24, ($r3, 0x140)
+        fst.d $f24, $r3, 0x140
+        fst.d $f25, $r3, 0x148
+        fst.d $f26, $r3, 0x150
+        fst.d $f27, $r3, 0x158
+        fst.d $f28, $r3, 0x160
+        fst.d $f29, $r3, 0x168
+        fst.d $f30, $r3, 0x170
+        fst.d $f31, $r3, 0x178
         "
-    };
-    (maybesavefp()) => {
-        ""
     };
 }
 
@@ -78,18 +124,83 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
 }
 
 macro_rules! restore {
-    ($ctx:expr, gp$(, $fp:ident)?) => {
+    ($ctx:expr, gp, fp) => {
         core::arch::asm!(
-        "addi.d $r3, $r3, -16",
-        in("$r1") $ctx,
-        options(noreturn));
+            restore!(restore),
+            "
+            ld.d $r2, $r4, 0x10
+            ld.d $r5, $r4, 0x18
+            ld.d $r6, $r4, 0x20
+            ld.d $r7, $r4, 0x28
+            ld.d $r8, $r4, 0x30
+            ld.d $r9, $r4, 0x38
+            ld.d $r10, $r4, 0x40
+            ld.d $r11, $r4, 0x48
+            ld.d $r12, $r4, 0x50
+            ld.d $r13, $r4, 0x58
+            ld.d $r14, $r4, 0x60
+            ld.d $r15, $r4, 0x68
+            ld.d $r16, $r4, 0x70
+            ld.d $r17, $r4, 0x78
+            ld.d $r18, $r4, 0x80
+            ld.d $r19, $r4, 0x88
+            ld.d $r20, $r4, 0x90
+            ld.d $r21, $r4, 0x98
+            ld.d $r22, $r4, 0xA0
+            ld.d $r23, $r4, 0xA8
+            ld.d $r24, $r4, 0xB0
+            ld.d $r25, $r4, 0xB8
+            ld.d $r26, $r4, 0xC0
+            ld.d $r27, $r4, 0xC8
+            ld.d $r28, $r4, 0xD0
+            ld.d $r29, $r4, 0xD8
+            ld.d $r30, $r4, 0xE0
+            ld.d $r31, $r4, 0xE8
+            ld.d $r1, $r4, 0xF0
+
+            ld.d $r3, $r4, 0x00
+            ld.d $r4, $r4, 0x08
+            ret
+            ",
+            in("$r4") $ctx,
+            options(noreturn)
+        );
     };
-    (mayberestore(fp)) => {
+    (restore) => {
         "
+        fld.d $f0, $r4, 0x100
+        fld.d $f1, $r4, 0x108
+        fld.d $f2, $r4, 0x110
+        fld.d $f3, $r4, 0x118
+        fld.d $f4, $r4, 0x120
+        fld.d $f5, $r4, 0x128
+        fld.d $f6, $r4, 0x130
+        fld.d $f7, $r4, 0x138
+        fld.d $f8, $r4, 0x140
+        fld.d $f9, $r4, 0x148
+        fld.d $f10, $r4, 0x150
+        fld.d $f11, $r4, 0x158
+        fld.d $f12, $r4, 0x160
+        fld.d $f13, $r4, 0x168
+        fld.d $f14, $r4, 0x170
+        fld.d $f15, $r4, 0x178
+        fld.d $f16, $r4, 0x180
+        fld.d $f17, $r4, 0x188
+        fld.d $f18, $r4, 0x190
+        fld.d $f19, $r4, 0x198
+        fld.d $f20, $r4, 0x1A0
+        fld.d $f21, $r4, 0x1A8
+        fld.d $f22, $r4, 0x1B0
+        fld.d $f23, $r4, 0x1B8
+        fld.d $f24, $r4, 0x1C0
+        fld.d $f25, $r4, 0x1C8
+        fld.d $f26, $r4, 0x1D0
+        fld.d $f27, $r4, 0x1D8
+        fld.d $f28, $r4, 0x1E0
+        fld.d $f29, $r4, 0x1E8
+        fld.d $f30, $r4, 0x1F0
+        fld.d $f31, $r4, 0x1F8
         "
-    };
-    (mayberestore()) => {
-        ""
     };
 }
 

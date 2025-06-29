@@ -1,5 +1,4 @@
-use core::fmt;
-use core::ops;
+use core::{fmt, ops};
 use gimli::{LoongArch, Register};
 
 use super::maybe_cfi;
@@ -61,9 +60,11 @@ macro_rules! ctx_helper {
     // see https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html for ABI conventions
     (save_gp) => {
         "
+        st.d $r0, $r3, 0x0 // zero
         st.d $r1, $r3, 0x8 // ra
         st.d $r2, $r3, 0x10 // tp
         // sp is saved later
+        st.d $r21, $r3, 0xa8 // reserved
         st.d $r22, $r3, 0xb0 // fp
         st.d $r23, $r3, 0xb8 // s0
         st.d $r24, $r3, 0xc0 // s1

@@ -56,7 +56,71 @@ impl ops::IndexMut<gimli::Register> for Context {
     }
 }
 
-macro_rules! ctx_helper {
+macro_rules! save_regs {
+    (gp$(, $fp:ident)?) => {
+        core::arch::naked_asm!(
+            maybe_cfi!(".cfi_startproc"),
+            "
+            move $r12, $r3
+            addi.d $r3, $r3, -0x210
+            ",
+            maybe_cfi!(".cfi_def_cfa_offset 0x210"),
+            "
+            st.d $r1, $r3, 0x200
+            ",
+            maybe_cfi!(".cfi_offset 1, -16"), // ra
+            helper!(save_gp),
+            save_regs!(maybe_save_fp($($fp)?)),
+            "
+            move $r12, $r4
+            move $r4, $r3 // argument a0 pointing the ctx base
+
+            addi.d $r13, $r3, 0x210
+            st.d $r13, $r3, 0x18 // save sp
+
+            jirl $r1, $r12, 0 // call f
+
+            ld.d $r1, $r3, 0x200
+            addi.d $r3, $r3, 0x210 // restore ra and sp
+            ",
+            maybe_cfi!(".cfi_def_cfa_offset 0"),
+            maybe_cfi!(".cfi_restore 1"), // ra
+            "
+            ret
+            ",
+            maybe_cfi!(".cfi_endproc"),
+        )
+    };
+    (maybe_save_fp(fp)) => {
+        helper!(save_fp)
+    };
+    (maybe_save_fp()) => {
+        ""
+    };
+}
+
+macro_rules! restore_regs {
+    ($ctx:expr, gp$(, $fp:ident)?) => {
+        core::arch::asm!(
+            restore_regs!(maybe_restore_fp($($fp)?)),
+            helper!(restore_gp),
+            "
+            ld.d $r4, $r4, 0x20
+            ret
+            ",
+            in("$r4") $ctx,
+            options(noreturn)
+        )
+    };
+    (maybe_restore_fp(fp)) => {
+        helper!(restore_fp)
+    };
+    (maybe_restore_fp()) => {
+        ""
+    };
+}
+
+macro_rules! helper {
     // see https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html for ABI conventions
     (save_gp) => {
         "
@@ -94,7 +158,7 @@ macro_rules! ctx_helper {
         ld.d $r1, $r4, 0x8 // ra
         ld.d $r2, $r4, 0x10 // tp
         ld.d $r3, $r4, 0x18 // sp
-        // a0 is restored later
+        // r4(a0) is restored later
         ld.d $r5, $r4, 0x28 // a1
         ld.d $r6, $r4, 0x30 // a2
         ld.d $r7, $r4, 0x38 // a3
@@ -166,52 +230,18 @@ macro_rules! ctx_helper {
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     #[allow(unused_unsafe)]
     unsafe {
-        core::arch::naked_asm!(
-            maybe_cfi!(".cfi_startproc"),
-            "
-            move $r12, $r3
-            addi.d $r3, $r3, -0x210
-            ",
-            maybe_cfi!(".cfi_def_cfa_offset 0x210"),
-            "
-            st.d $r1, $r3, 0x200
-            ",
-            maybe_cfi!(".cfi_offset 1, -16"), // ra
-            ctx_helper!(save_gp),
-            ctx_helper!(save_fp),
-            "
-            move $r12, $r4
-            move $r4, $r3 // argument a0 pointing the ctx base
-
-            addi.d $r13, $r3, 0x210
-            st.d $r13, $r3, 0x18 // save sp
-
-            jirl $r1, $r12, 0 // call f
-
-            ld.d $r1, $r3, 0x200
-            addi.d $r3, $r3, 0x210 // restore ra and sp
-            ",
-            maybe_cfi!(".cfi_def_cfa_offset 0"),
-            maybe_cfi!(".cfi_restore 1"), // ra
-            "
-            ret
-            ",
-            maybe_cfi!(".cfi_endproc"),
-        )
+        #[cfg(target_feature = "d")]
+        save_regs!(gp, fp);
+        #[cfg(not(target_feature = "d"))]
+        save_regs!(gp);
     }
 }
 
 pub unsafe fn restore_context(ctx: &Context) -> ! {
     unsafe {
-        core::arch::asm!(
-            ctx_helper!(restore_gp),
-            ctx_helper!(restore_fp),
-            "
-            ld.d $r4, $r4, 0x20
-            ret
-            ",
-            in("$r4") ctx,
-            options(noreturn)
-        );
+        #[cfg(target_feature = "d")]
+        restore_regs!(ctx, gp, fp);
+        #[cfg(not(target_feature = "d"))]
+        restore_regs!(ctx, gp);
     }
 }

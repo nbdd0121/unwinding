@@ -3,8 +3,7 @@ use gimli::{LoongArch, Register};
 
 use super::maybe_cfi;
 
-// https://github.com/loongson/la-abi-specs/blob/release/ladwarf.adoc
-pub const MAX_REG_RULES: usize = 65;
+pub const MAX_REG_RULES: usize = 74;
 
 #[repr(C)]
 #[derive(Clone, Default)]

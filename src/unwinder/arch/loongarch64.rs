@@ -10,7 +10,6 @@ pub const MAX_REG_RULES: usize = 65;
 #[derive(Clone, Default)]
 pub struct Context {
     pub gp: [usize; 32],
-    // sp is gp[3]
     pub fp: [usize; 32],
 }
 
@@ -23,7 +22,6 @@ impl fmt::Debug for Context {
                 &format_args!("{:#x}", self.gp[i]),
             );
         }
-        fmt.field("sp", &self.gp[3]);
         for i in 0..=31 {
             fmt.field(
                 LoongArch::register_name(Register((i + 32) as _)).unwrap(),
@@ -69,7 +67,23 @@ macro_rules! save_regs {
             st.d $r1, $r3, 0x200
             ",
             maybe_cfi!(".cfi_offset 1, -16"), // ra
-            helper!(save_gp),
+            "
+            st.d $r0, $r3, 0x0 // zero
+            st.d $r1, $r3, 0x8 // ra
+            st.d $r2, $r3, 0x10 // tp
+            // sp is saved later
+            st.d $r21, $r3, 0xa8 // reserved
+            st.d $r22, $r3, 0xb0 // fp
+            st.d $r23, $r3, 0xb8 // s0
+            st.d $r24, $r3, 0xc0 // s1
+            st.d $r25, $r3, 0xc8 // s2
+            st.d $r26, $r3, 0xd0 // s3
+            st.d $r27, $r3, 0xd8 // s4
+            st.d $r28, $r3, 0xe0 // s5
+            st.d $r29, $r3, 0xe8 // s6
+            st.d $r30, $r3, 0xf0 // s7
+            st.d $r31, $r3, 0xf8 // s8
+            ",
             save_regs!(maybe_save_fp($($fp)?)),
             "
             move $r12, $r4
@@ -92,56 +106,6 @@ macro_rules! save_regs {
         )
     };
     (maybe_save_fp(fp)) => {
-        helper!(save_fp)
-    };
-    (maybe_save_fp()) => {
-        ""
-    };
-}
-
-macro_rules! restore_regs {
-    ($ctx:expr, gp$(, $fp:ident)?) => {
-        core::arch::asm!(
-            restore_regs!(maybe_restore_fp($($fp)?)),
-            helper!(restore_gp),
-            "
-            ld.d $r4, $r4, 0x20
-            ret
-            ",
-            in("$r4") $ctx,
-            options(noreturn)
-        )
-    };
-    (maybe_restore_fp(fp)) => {
-        helper!(restore_fp)
-    };
-    (maybe_restore_fp()) => {
-        ""
-    };
-}
-
-macro_rules! helper {
-    // see https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html for ABI conventions
-    (save_gp) => {
-        "
-        st.d $r0, $r3, 0x0 // zero
-        st.d $r1, $r3, 0x8 // ra
-        st.d $r2, $r3, 0x10 // tp
-        // sp is saved later
-        st.d $r21, $r3, 0xa8 // reserved
-        st.d $r22, $r3, 0xb0 // fp
-        st.d $r23, $r3, 0xb8 // s0
-        st.d $r24, $r3, 0xc0 // s1
-        st.d $r25, $r3, 0xc8 // s2
-        st.d $r26, $r3, 0xd0 // s3
-        st.d $r27, $r3, 0xd8 // s4
-        st.d $r28, $r3, 0xe0 // s5
-        st.d $r29, $r3, 0xe8 // s6
-        st.d $r30, $r3, 0xf0 // s7
-        st.d $r31, $r3, 0xf8 // s8
-        "
-    };
-    (save_fp) => {
         "
         fst.d $f24, $r3, 0x1c0 // fs0
         fst.d $f25, $r3, 0x1c8 // fs1
@@ -153,42 +117,57 @@ macro_rules! helper {
         fst.d $f31, $r3, 0x1f8 // fs7
         "
     };
-    (restore_gp) => {
-        "
-        ld.d $r1, $r4, 0x8 // ra
-        ld.d $r2, $r4, 0x10 // tp
-        ld.d $r3, $r4, 0x18 // sp
-        // r4(a0) is restored later
-        ld.d $r5, $r4, 0x28 // a1
-        ld.d $r6, $r4, 0x30 // a2
-        ld.d $r7, $r4, 0x38 // a3
-        ld.d $r8, $r4, 0x40 // a4
-        ld.d $r9, $r4, 0x48 // a5
-        ld.d $r10, $r4, 0x50 // a6
-        ld.d $r11, $r4, 0x58 // a7
-        ld.d $r12, $r4, 0x60 // t0
-        ld.d $r13, $r4, 0x68 // t1
-        ld.d $r14, $r4, 0x70 // t2
-        ld.d $r15, $r4, 0x78 // t3
-        ld.d $r16, $r4, 0x80 // t4
-        ld.d $r17, $r4, 0x88 // t5
-        ld.d $r18, $r4, 0x90 // t6
-        ld.d $r19, $r4, 0x98 // t7
-        ld.d $r20, $r4, 0xa0 // t8
-        ld.d $r21, $r4, 0xa8 // reserved
-        ld.d $r22, $r4, 0xb0 // fp
-        ld.d $r23, $r4, 0xb8 // s0
-        ld.d $r24, $r4, 0xc0 // s1
-        ld.d $r25, $r4, 0xc8 // s2
-        ld.d $r26, $r4, 0xd0 // s3
-        ld.d $r27, $r4, 0xd8 // s4
-        ld.d $r28, $r4, 0xe0 // s5
-        ld.d $r29, $r4, 0xe8 // s6
-        ld.d $r30, $r4, 0xf0 // s7
-        ld.d $r31, $r4, 0xf8 // s8
-        "
+    (maybe_save_fp()) => {
+        ""
     };
-    (restore_fp) => {
+}
+
+macro_rules! restore_regs {
+    ($ctx:expr, gp$(, $fp:ident)?) => {
+        core::arch::asm!(
+            restore_regs!(maybe_restore_fp($($fp)?)),
+            "
+            ld.d $r1, $r4, 0x8 // ra
+            ld.d $r2, $r4, 0x10 // tp
+            ld.d $r3, $r4, 0x18 // sp
+            // r4(a0) is restored later
+            ld.d $r5, $r4, 0x28 // a1
+            ld.d $r6, $r4, 0x30 // a2
+            ld.d $r7, $r4, 0x38 // a3
+            ld.d $r8, $r4, 0x40 // a4
+            ld.d $r9, $r4, 0x48 // a5
+            ld.d $r10, $r4, 0x50 // a6
+            ld.d $r11, $r4, 0x58 // a7
+            ld.d $r12, $r4, 0x60 // t0
+            ld.d $r13, $r4, 0x68 // t1
+            ld.d $r14, $r4, 0x70 // t2
+            ld.d $r15, $r4, 0x78 // t3
+            ld.d $r16, $r4, 0x80 // t4
+            ld.d $r17, $r4, 0x88 // t5
+            ld.d $r18, $r4, 0x90 // t6
+            ld.d $r19, $r4, 0x98 // t7
+            ld.d $r20, $r4, 0xa0 // t8
+            ld.d $r21, $r4, 0xa8 // reserved
+            ld.d $r22, $r4, 0xb0 // fp
+            ld.d $r23, $r4, 0xb8 // s0
+            ld.d $r24, $r4, 0xc0 // s1
+            ld.d $r25, $r4, 0xc8 // s2
+            ld.d $r26, $r4, 0xd0 // s3
+            ld.d $r27, $r4, 0xd8 // s4
+            ld.d $r28, $r4, 0xe0 // s5
+            ld.d $r29, $r4, 0xe8 // s6
+            ld.d $r30, $r4, 0xf0 // s7
+            ld.d $r31, $r4, 0xf8 // s8
+            ",
+            "
+            ld.d $r4, $r4, 0x20
+            ret
+            ",
+            in("$r4") $ctx,
+            options(noreturn)
+        )
+    };
+    (maybe_restore_fp(fp)) => {
         "
         fld.d $f0, $r4, 0x100 // fa0
         fld.d $f1, $r4, 0x108 // fa1
@@ -223,6 +202,9 @@ macro_rules! helper {
         fld.d $f30, $r4, 0x1f0 // fs6
         fld.d $f31, $r4, 0x1f8 // fs7
         "
+    };
+    (maybe_restore_fp()) => {
+        ""
     };
 }
 

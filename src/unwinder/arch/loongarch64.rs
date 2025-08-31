@@ -3,12 +3,14 @@ use gimli::{LoongArch, Register};
 
 use super::maybe_cfi;
 
+// LoongArch64's DWARF_FRAME_REGISTERS in GCC is 74
 pub const MAX_REG_RULES: usize = 74;
 
 #[repr(C)]
 #[derive(Clone, Default)]
 pub struct Context {
     pub gp: [usize; 32],
+    #[cfg(target_feature = "d")]
     pub fp: [usize; 32],
 }
 
@@ -21,6 +23,7 @@ impl fmt::Debug for Context {
                 &format_args!("{:#x}", self.gp[i]),
             );
         }
+        #[cfg(target_feature = "d")]
         for i in 0..=31 {
             fmt.field(
                 LoongArch::register_name(Register((i + 32) as _)).unwrap(),
@@ -37,6 +40,7 @@ impl ops::Index<Register> for Context {
     fn index(&self, reg: Register) -> &usize {
         match reg {
             Register(0..=31) => &self.gp[reg.0 as usize],
+            #[cfg(target_feature = "d")]
             Register(32..=63) => &self.fp[(reg.0 - 32) as usize],
             _ => unimplemented!(),
         }
@@ -47,6 +51,7 @@ impl ops::IndexMut<gimli::Register> for Context {
     fn index_mut(&mut self, reg: Register) -> &mut usize {
         match reg {
             Register(0..=31) => &mut self.gp[reg.0 as usize],
+            #[cfg(target_feature = "d")]
             Register(32..=63) => &mut self.fp[(reg.0 - 32) as usize],
             _ => unimplemented!(),
         }
@@ -58,43 +63,40 @@ macro_rules! save_regs {
         core::arch::naked_asm!(
             maybe_cfi!(".cfi_startproc"),
             "
-            move $r12, $r3
-            addi.d $r3, $r3, -0x210
+            move $t0, $sp
+            addi.d $sp, $sp, -0x210
             ",
             maybe_cfi!(".cfi_def_cfa_offset 0x210"),
             "
-            st.d $r1, $r3, 0x200
+            st.d $ra, $sp, 0x200
             ",
             maybe_cfi!(".cfi_offset 1, -16"), // ra
             "
-            st.d $r0, $r3, 0x0 // zero
-            st.d $r1, $r3, 0x8 // ra
-            st.d $r2, $r3, 0x10 // tp
-            // sp is saved later
-            st.d $r21, $r3, 0xa8 // reserved
-            st.d $r22, $r3, 0xb0 // fp
-            st.d $r23, $r3, 0xb8 // s0
-            st.d $r24, $r3, 0xc0 // s1
-            st.d $r25, $r3, 0xc8 // s2
-            st.d $r26, $r3, 0xd0 // s3
-            st.d $r27, $r3, 0xd8 // s4
-            st.d $r28, $r3, 0xe0 // s5
-            st.d $r29, $r3, 0xe8 // s6
-            st.d $r30, $r3, 0xf0 // s7
-            st.d $r31, $r3, 0xf8 // s8
+            st.d $zero, $sp, 0x0
+            st.d $ra, $sp, 0x8
+            st.d $tp, $sp, 0x10
+            st.d $t0, $sp, 0x18
+            st.d $r21, $sp, 0xa8 // reserved
+            st.d $fp, $sp, 0xb0
+            st.d $s0, $sp, 0xb8
+            st.d $s1, $sp, 0xc0
+            st.d $s2, $sp, 0xc8
+            st.d $s3, $sp, 0xd0
+            st.d $s4, $sp, 0xd8
+            st.d $s5, $sp, 0xe0
+            st.d $s6, $sp, 0xe8
+            st.d $s7, $sp, 0xf0
+            st.d $s8, $sp, 0xf8
             ",
             save_regs!(maybe_save_fp($($fp)?)),
             "
-            move $r12, $r4
-            move $r4, $r3 // argument a0 pointing the ctx base
+            move $t0, $a0
+            move $a0, $sp
 
-            addi.d $r13, $r3, 0x210
-            st.d $r13, $r3, 0x18 // save sp
+            jirl $ra, $t0, 0
 
-            jirl $r1, $r12, 0 // call f
-
-            ld.d $r1, $r3, 0x200
-            addi.d $r3, $r3, 0x210 // restore ra and sp
+            ld.d $ra, $sp, 0x200
+            addi.d $sp, $sp, 0x210
             ",
             maybe_cfi!(".cfi_def_cfa_offset 0"),
             maybe_cfi!(".cfi_restore 1"), // ra
@@ -106,14 +108,14 @@ macro_rules! save_regs {
     };
     (maybe_save_fp(fp)) => {
         "
-        fst.d $f24, $r3, 0x1c0 // fs0
-        fst.d $f25, $r3, 0x1c8 // fs1
-        fst.d $f26, $r3, 0x1d0 // fs2
-        fst.d $f27, $r3, 0x1d8 // fs3
-        fst.d $f28, $r3, 0x1e0 // fs4
-        fst.d $f29, $r3, 0x1e8 // fs5
-        fst.d $f30, $r3, 0x1f0 // fs6
-        fst.d $f31, $r3, 0x1f8 // fs7
+        fst.d $fs0, $sp, 0x1c0
+        fst.d $fs1, $sp, 0x1c8
+        fst.d $fs2, $sp, 0x1d0
+        fst.d $fs3, $sp, 0x1d8
+        fst.d $fs4, $sp, 0x1e0
+        fst.d $fs5, $sp, 0x1e8
+        fst.d $fs6, $sp, 0x1f0
+        fst.d $fs7, $sp, 0x1f8
         "
     };
     (maybe_save_fp()) => {
@@ -126,80 +128,79 @@ macro_rules! restore_regs {
         core::arch::asm!(
             restore_regs!(maybe_restore_fp($($fp)?)),
             "
-            ld.d $r1, $r4, 0x8 // ra
-            ld.d $r2, $r4, 0x10 // tp
-            ld.d $r3, $r4, 0x18 // sp
-            // r4(a0) is restored later
-            ld.d $r5, $r4, 0x28 // a1
-            ld.d $r6, $r4, 0x30 // a2
-            ld.d $r7, $r4, 0x38 // a3
-            ld.d $r8, $r4, 0x40 // a4
-            ld.d $r9, $r4, 0x48 // a5
-            ld.d $r10, $r4, 0x50 // a6
-            ld.d $r11, $r4, 0x58 // a7
-            ld.d $r12, $r4, 0x60 // t0
-            ld.d $r13, $r4, 0x68 // t1
-            ld.d $r14, $r4, 0x70 // t2
-            ld.d $r15, $r4, 0x78 // t3
-            ld.d $r16, $r4, 0x80 // t4
-            ld.d $r17, $r4, 0x88 // t5
-            ld.d $r18, $r4, 0x90 // t6
-            ld.d $r19, $r4, 0x98 // t7
-            ld.d $r20, $r4, 0xa0 // t8
-            ld.d $r21, $r4, 0xa8 // reserved
-            ld.d $r22, $r4, 0xb0 // fp
-            ld.d $r23, $r4, 0xb8 // s0
-            ld.d $r24, $r4, 0xc0 // s1
-            ld.d $r25, $r4, 0xc8 // s2
-            ld.d $r26, $r4, 0xd0 // s3
-            ld.d $r27, $r4, 0xd8 // s4
-            ld.d $r28, $r4, 0xe0 // s5
-            ld.d $r29, $r4, 0xe8 // s6
-            ld.d $r30, $r4, 0xf0 // s7
-            ld.d $r31, $r4, 0xf8 // s8
+            ld.d $ra, $a0, 0x8
+            ld.d $tp, $a0, 0x10
+            ld.d $sp, $a0, 0x18
+            ld.d $a1, $a0, 0x28
+            ld.d $a2, $a0, 0x30
+            ld.d $a3, $a0, 0x38
+            ld.d $a4, $a0, 0x40
+            ld.d $a5, $a0, 0x48
+            ld.d $a6, $a0, 0x50
+            ld.d $a7, $a0, 0x58
+            ld.d $t0, $a0, 0x60
+            ld.d $t1, $a0, 0x68
+            ld.d $t2, $a0, 0x70
+            ld.d $t3, $a0, 0x78
+            ld.d $t4, $a0, 0x80
+            ld.d $t5, $a0, 0x88
+            ld.d $t6, $a0, 0x90
+            ld.d $t7, $a0, 0x98
+            ld.d $t8, $a0, 0xa0
+            ld.d $r21, $a0, 0xa8 // reserved
+            ld.d $fp, $a0, 0xb0
+            ld.d $s0, $a0, 0xb8
+            ld.d $s1, $a0, 0xc0
+            ld.d $s2, $a0, 0xc8
+            ld.d $s3, $a0, 0xd0
+            ld.d $s4, $a0, 0xd8
+            ld.d $s5, $a0, 0xe0
+            ld.d $s6, $a0, 0xe8
+            ld.d $s7, $a0, 0xf0
+            ld.d $s8, $a0, 0xf8
             ",
             "
-            ld.d $r4, $r4, 0x20
+            ld.d $a0, $a0, 0x20
             ret
             ",
-            in("$r4") $ctx,
+            in("$a0") $ctx,
             options(noreturn)
         )
     };
     (maybe_restore_fp(fp)) => {
         "
-        fld.d $f0, $r4, 0x100 // fa0
-        fld.d $f1, $r4, 0x108 // fa1
-        fld.d $f2, $r4, 0x110 // fa2
-        fld.d $f3, $r4, 0x118 // fa3
-        fld.d $f4, $r4, 0x120 // fa4
-        fld.d $f5, $r4, 0x128 // fa5
-        fld.d $f6, $r4, 0x130 // fa6
-        fld.d $f7, $r4, 0x138 // fa7
-        fld.d $f8, $r4, 0x140 // ft0
-        fld.d $f9, $r4, 0x148 // ft1
-        fld.d $f10, $r4, 0x150 // ft2
-        fld.d $f11, $r4, 0x158 // ft3
-        fld.d $f12, $r4, 0x160 // ft4
-        fld.d $f13, $r4, 0x168 // ft5
-        fld.d $f14, $r4, 0x170 // ft6
-        fld.d $f15, $r4, 0x178 // ft7
-        fld.d $f16, $r4, 0x180 // ft8
-        fld.d $f17, $r4, 0x188 // ft9
-        fld.d $f18, $r4, 0x190 // ft10
-        fld.d $f19, $r4, 0x198 // ft11
-        fld.d $f20, $r4, 0x1a0 // ft12
-        fld.d $f21, $r4, 0x1a8 // ft13
-        fld.d $f22, $r4, 0x1b0 // ft14
-        fld.d $f23, $r4, 0x1b8 // ft15
-        fld.d $f24, $r4, 0x1c0 // fs0
-        fld.d $f25, $r4, 0x1c8 // fs1
-        fld.d $f26, $r4, 0x1d0 // fs2
-        fld.d $f27, $r4, 0x1d8 // fs3
-        fld.d $f28, $r4, 0x1e0 // fs4
-        fld.d $f29, $r4, 0x1e8 // fs5
-        fld.d $f30, $r4, 0x1f0 // fs6
-        fld.d $f31, $r4, 0x1f8 // fs7
+        fld.d $fa0, $a0, 0x100
+        fld.d $fa1, $a0, 0x108
+        fld.d $fa2, $a0, 0x110
+        fld.d $fa3, $a0, 0x118
+        fld.d $fa4, $a0, 0x120
+        fld.d $fa5, $a0, 0x128
+        fld.d $fa6, $a0, 0x130
+        fld.d $fa7, $a0, 0x138
+        fld.d $ft0, $a0, 0x140
+        fld.d $ft1, $a0, 0x148
+        fld.d $ft2, $a0, 0x150
+        fld.d $ft3, $a0, 0x158
+        fld.d $ft4, $a0, 0x160
+        fld.d $ft5, $a0, 0x168
+        fld.d $ft6, $a0, 0x170
+        fld.d $ft7, $a0, 0x178
+        fld.d $ft8, $a0, 0x180
+        fld.d $ft9, $a0, 0x188
+        fld.d $ft10, $a0, 0x190
+        fld.d $ft11, $a0, 0x198
+        fld.d $ft12, $a0, 0x1a0
+        fld.d $ft13, $a0, 0x1a8
+        fld.d $ft14, $a0, 0x1b0
+        fld.d $ft15, $a0, 0x1b8
+        fld.d $fs0, $a0, 0x1c0
+        fld.d $fs1, $a0, 0x1c8
+        fld.d $fs2, $a0, 0x1d0
+        fld.d $fs3, $a0, 0x1d8
+        fld.d $fs4, $a0, 0x1e0
+        fld.d $fs5, $a0, 0x1e8
+        fld.d $fs6, $a0, 0x1f0
+        fld.d $fs7, $a0, 0x1f8
         "
     };
     (maybe_restore_fp()) => {

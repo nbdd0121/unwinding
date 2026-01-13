@@ -7,13 +7,12 @@ use super::maybe_cfi;
 // Match DWARF_FRAME_REGISTERS in libgcc
 pub const MAX_REG_RULES: usize = 65;
 
-#[cfg(all(target_feature = "f", not(target_feature = "d")))]
-compile_error!("RISC-V with only F extension is not supported");
-
 #[repr(C)]
 #[derive(Clone, Default)]
 pub struct Context {
     pub gp: [usize; 32],
+    #[cfg(all(target_feature = "f", not(target_feature = "d")))]
+    pub fp: [u32; 32],
     #[cfg(target_feature = "d")]
     pub fp: [u64; 32],
 }
@@ -24,7 +23,7 @@ impl fmt::Debug for Context {
         for i in 0..=31 {
             fmt.field(RiscV::register_name(Register(i as _)).unwrap(), &self.gp[i]);
         }
-        #[cfg(target_feature = "d")]
+        #[cfg(target_feature = "f")]
         for i in 0..=31 {
             fmt.field(
                 RiscV::register_name(Register((i + 32) as _)).unwrap(),
@@ -81,7 +80,27 @@ macro_rules! code {
         sw s11, 0x6C(sp)
         "
     };
-    (save_fp) => {
+    (save_fp_f) => {
+        // arch option manipulation needed due to LLVM/Rust bug, see rust-lang/rust#80608
+        "
+        .option push
+        .option arch, +f
+        fsw fs0, 0xA0(sp)
+        fsw fs1, 0xA4(sp)
+        fsw fs2, 0xC8(sp)
+        fsw fs3, 0xCC(sp)
+        fsw fs4, 0xD0(sp)
+        fsw fs5, 0xD4(sp)
+        fsw fs6, 0xD8(sp)
+        fsw fs7, 0xDC(sp)
+        fsw fs8, 0xE0(sp)
+        fsw fs9, 0xE4(sp)
+        fsw fs10, 0xE8(sp)
+        fsw fs11, 0xEC(sp)
+        .option pop
+        "
+    };
+    (save_fp_d) => {
         // arch option manipulation needed due to LLVM/Rust bug, see rust-lang/rust#80608
         "
         .option push
@@ -135,7 +154,43 @@ macro_rules! code {
         lw t6, 0x7C(a0)
         "
     };
-    (restore_fp) => {
+    (restore_fp_f) => {
+        "
+        flw ft0, 0x80(a0)
+        flw ft1, 0x84(a0)
+        flw ft2, 0x88(a0)
+        flw ft3, 0x8C(a0)
+        flw ft4, 0x90(a0)
+        flw ft5, 0x94(a0)
+        flw ft6, 0x98(a0)
+        flw ft7, 0x9C(a0)
+        flw fs0, 0xA0(a0)
+        flw fs1, 0xA4(a0)
+        flw fa0, 0xA8(a0)
+        flw fa1, 0xAC(a0)
+        flw fa2, 0xB0(a0)
+        flw fa3, 0xB4(a0)
+        flw fa4, 0xB8(a0)
+        flw fa5, 0xBC(a0)
+        flw fa6, 0xC0(a0)
+        flw fa7, 0xC4(a0)
+        flw fs2, 0xC8(a0)
+        flw fs3, 0xCC(a0)
+        flw fs4, 0xD0(a0)
+        flw fs5, 0xD4(a0)
+        flw fs6, 0xD8(a0)
+        flw fs7, 0xDC(a0)
+        flw fs8, 0xE0(a0)
+        flw fs9, 0xE4(a0)
+        flw fs10, 0xE8(a0)
+        flw fs11, 0xEC(a0)
+        flw ft8, 0xF0(a0)
+        flw ft9, 0xF4(a0)
+        flw ft10, 0xF8(a0)
+        flw ft11, 0xFC(a0)
+        "
+    };
+    (restore_fp_d) => {
         "
         fld ft0, 0x80(a0)
         fld ft1, 0x88(a0)
@@ -187,7 +242,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         "sw ra, 0x180(sp)",
         maybe_cfi!(".cfi_offset ra, -16"),
         code!(save_gp),
-        code!(save_fp),
+        code!(save_fp_d),
         "
         mv t0, a0
         mv a0, sp
@@ -200,7 +255,31 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         "ret",
         maybe_cfi!(".cfi_endproc"),
     );
-    #[cfg(not(target_feature = "d"))]
+    #[cfg(all(target_feature = "f", not(target_feature = "d")))]
+    core::arch::naked_asm!(
+        maybe_cfi!(".cfi_startproc"),
+        "
+        mv t0, sp
+        add sp, sp, -0x110
+        ",
+        maybe_cfi!(".cfi_def_cfa_offset 0x110"),
+        "sw ra, 0x100(sp)",
+        maybe_cfi!(".cfi_offset ra, -16"),
+        code!(save_gp),
+        code!(save_fp_f),
+        "
+        mv t0, a0
+        mv a0, sp
+        jalr t0
+        lw ra, 0x100(sp)
+        add sp, sp, 0x110
+        ",
+        maybe_cfi!(".cfi_def_cfa_offset 0"),
+        maybe_cfi!(".cfi_restore ra"),
+        "ret",
+        maybe_cfi!(".cfi_endproc"),
+    );
+    #[cfg(not(target_feature = "f"))]
     core::arch::naked_asm!(
         maybe_cfi!(".cfi_startproc"),
         "
@@ -229,7 +308,7 @@ pub unsafe fn restore_context(ctx: &Context) -> ! {
     #[cfg(target_feature = "d")]
     unsafe {
         core::arch::asm!(
-            code!(restore_fp),
+            code!(restore_fp_d),
             code!(restore_gp),
             "
             lw a0, 0x28(a0)
@@ -239,7 +318,20 @@ pub unsafe fn restore_context(ctx: &Context) -> ! {
             options(noreturn)
         );
     }
-    #[cfg(not(target_feature = "d"))]
+    #[cfg(all(target_feature = "f", not(target_feature = "d")))]
+    unsafe {
+        core::arch::asm!(
+            code!(restore_fp_f),
+            code!(restore_gp),
+            "
+            lw a0, 0x28(a0)
+            ret
+            ",
+            in("a0") ctx,
+            options(noreturn)
+        );
+    }
+    #[cfg(not(target_feature = "f"))]
     unsafe {
         core::arch::asm!(
             code!(restore_gp),

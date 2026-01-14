@@ -7,10 +7,16 @@ use super::maybe_cfi;
 // Match DWARF_FRAME_REGISTERS in libgcc
 pub const MAX_REG_RULES: usize = 65;
 
+#[cfg(all(target_feature = "e", target_feature = "f"))]
+compile_error!("RISC-V RV32E with F extension is not supported");
+
 #[repr(C)]
 #[derive(Clone, Default)]
 pub struct Context {
+    #[cfg(not(target_feature = "e"))]
     pub gp: [usize; 32],
+    #[cfg(target_feature = "e")]
+    pub gp: [usize; 16],
     #[cfg(all(target_feature = "f", not(target_feature = "d")))]
     pub fp: [u32; 32],
     #[cfg(target_feature = "d")]
@@ -20,8 +26,8 @@ pub struct Context {
 impl fmt::Debug for Context {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fmt = fmt.debug_struct("Context");
-        for i in 0..=31 {
-            fmt.field(RiscV::register_name(Register(i as _)).unwrap(), &self.gp[i]);
+        for (i, gp) in self.gp.iter().enumerate() {
+            fmt.field(RiscV::register_name(Register(i as _)).unwrap(), gp);
         }
         #[cfg(target_feature = "f")]
         for i in 0..=31 {
@@ -59,7 +65,8 @@ impl ops::IndexMut<gimli::Register> for Context {
 }
 
 macro_rules! code {
-    (save_gp) => {
+    // RV32*
+    (save_gp_0_to_15) => {
         "
         sw x0, 0x00(sp)
         sw ra, 0x04(sp)
@@ -68,6 +75,11 @@ macro_rules! code {
         sw tp, 0x10(sp)
         sw s0, 0x20(sp)
         sw s1, 0x24(sp)
+        "
+    };
+    // RV32I*
+    (save_gp_16_to_31) => {
+        "
         sw s2, 0x48(sp)
         sw s3, 0x4C(sp)
         sw s4, 0x50(sp)
@@ -80,6 +92,7 @@ macro_rules! code {
         sw s11, 0x6C(sp)
         "
     };
+    // RV32IF
     (save_fp_f) => {
         // arch option manipulation needed due to LLVM/Rust bug, see rust-lang/rust#80608
         "
@@ -100,6 +113,7 @@ macro_rules! code {
         .option pop
         "
     };
+    // RV32IFD
     (save_fp_d) => {
         // arch option manipulation needed due to LLVM/Rust bug, see rust-lang/rust#80608
         "
@@ -120,7 +134,8 @@ macro_rules! code {
         .option pop
         "
     };
-    (restore_gp) => {
+    // RV32*
+    (restore_gp_0_to_15) => {
         "
         lw ra, 0x04(a0)
         lw sp, 0x08(a0)
@@ -136,6 +151,11 @@ macro_rules! code {
         lw a3, 0x34(a0)
         lw a4, 0x38(a0)
         lw a5, 0x3C(a0)
+        "
+    };
+    // RV32I*
+    (restore_gp_16_to_31) => {
+        "
         lw a6, 0x40(a0)
         lw a7, 0x44(a0)
         lw s2, 0x48(a0)
@@ -154,6 +174,7 @@ macro_rules! code {
         lw t6, 0x7C(a0)
         "
     };
+    // RV32IF
     (restore_fp_f) => {
         "
         flw ft0, 0x80(a0)
@@ -190,6 +211,7 @@ macro_rules! code {
         flw ft11, 0xFC(a0)
         "
     };
+    // RV32IFD
     (restore_fp_d) => {
         "
         fld ft0, 0x80(a0)
@@ -231,6 +253,7 @@ macro_rules! code {
 #[unsafe(naked)]
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
     // No need to save caller-saved registers here.
+    // RV32IFD
     #[cfg(target_feature = "d")]
     core::arch::naked_asm!(
         maybe_cfi!(".cfi_startproc"),
@@ -241,7 +264,8 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         maybe_cfi!(".cfi_def_cfa_offset 0x190"),
         "sw ra, 0x180(sp)",
         maybe_cfi!(".cfi_offset ra, -16"),
-        code!(save_gp),
+        code!(save_gp_0_to_15),
+        code!(save_gp_16_to_31),
         code!(save_fp_d),
         "
         mv t0, a0
@@ -255,6 +279,7 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         "ret",
         maybe_cfi!(".cfi_endproc"),
     );
+    // RV32IF
     #[cfg(all(target_feature = "f", not(target_feature = "d")))]
     core::arch::naked_asm!(
         maybe_cfi!(".cfi_startproc"),
@@ -265,7 +290,8 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         maybe_cfi!(".cfi_def_cfa_offset 0x110"),
         "sw ra, 0x100(sp)",
         maybe_cfi!(".cfi_offset ra, -16"),
-        code!(save_gp),
+        code!(save_gp_0_to_15),
+        code!(save_gp_16_to_31),
         code!(save_fp_f),
         "
         mv t0, a0
@@ -279,7 +305,8 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         "ret",
         maybe_cfi!(".cfi_endproc"),
     );
-    #[cfg(not(target_feature = "f"))]
+    // RV32I
+    #[cfg(all(not(target_feature = "f"), not(target_feature = "e")))]
     core::arch::naked_asm!(
         maybe_cfi!(".cfi_startproc"),
         "
@@ -289,7 +316,8 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         maybe_cfi!(".cfi_def_cfa_offset 0x90"),
         "sw ra, 0x80(sp)",
         maybe_cfi!(".cfi_offset ra, -16"),
-        code!(save_gp),
+        code!(save_gp_0_to_15),
+        code!(save_gp_16_to_31),
         "
         mv t0, a0
         mv a0, sp
@@ -302,14 +330,40 @@ pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), p
         "ret",
         maybe_cfi!(".cfi_endproc")
     );
+    // RV32E
+    #[cfg(target_feature = "e")]
+    core::arch::naked_asm!(
+        maybe_cfi!(".cfi_startproc"),
+        "
+        mv t0, sp
+        add sp, sp, -0x50
+        ",
+        maybe_cfi!(".cfi_def_cfa_offset 0x50"),
+        "sw ra, 0x40(sp)",
+        maybe_cfi!(".cfi_offset ra, -16"),
+        code!(save_gp_0_to_15),
+        "
+        mv t0, a0
+        mv a0, sp
+        jalr t0
+        lw ra, 0x40(sp)
+        add sp, sp, 0x50
+        ",
+        maybe_cfi!(".cfi_def_cfa_offset 0"),
+        maybe_cfi!(".cfi_restore ra"),
+        "ret",
+        maybe_cfi!(".cfi_endproc")
+    );
 }
 
 pub unsafe fn restore_context(ctx: &Context) -> ! {
+    // RV32IFD
     #[cfg(target_feature = "d")]
     unsafe {
         core::arch::asm!(
             code!(restore_fp_d),
-            code!(restore_gp),
+            code!(restore_gp_0_to_15),
+            code!(restore_gp_16_to_31),
             "
             lw a0, 0x28(a0)
             ret
@@ -318,11 +372,13 @@ pub unsafe fn restore_context(ctx: &Context) -> ! {
             options(noreturn)
         );
     }
+    // RV32IF
     #[cfg(all(target_feature = "f", not(target_feature = "d")))]
     unsafe {
         core::arch::asm!(
             code!(restore_fp_f),
-            code!(restore_gp),
+            code!(restore_gp_0_to_15),
+            code!(restore_gp_16_to_31),
             "
             lw a0, 0x28(a0)
             ret
@@ -331,10 +387,25 @@ pub unsafe fn restore_context(ctx: &Context) -> ! {
             options(noreturn)
         );
     }
-    #[cfg(not(target_feature = "f"))]
+    // RV32I
+    #[cfg(all(not(target_feature = "f"), not(target_feature = "e")))]
     unsafe {
         core::arch::asm!(
-            code!(restore_gp),
+            code!(restore_gp_0_to_15),
+            code!(restore_gp_16_to_31),
+            "
+            lw a0, 0x28(a0)
+            ret
+            ",
+            in("a0") ctx,
+            options(noreturn)
+        );
+    }
+    // RV32E
+    #[cfg(target_feature = "e")]
+    unsafe {
+        core::arch::asm!(
+            code!(restore_gp_0_to_15),
             "
             lw a0, 0x28(a0)
             ret

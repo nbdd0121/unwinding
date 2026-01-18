@@ -1,4 +1,5 @@
-use core::{fmt, ops};
+use core::fmt;
+use core::ops;
 use gimli::{LoongArch, Register};
 
 use super::maybe_cfi;
@@ -6,6 +7,9 @@ use super::maybe_cfi;
 // LoongArch64's DWARF_FRAME_REGISTERS in GCC is 74
 pub const MAX_REG_RULES: usize = 74;
 
+// https://doc.rust-lang.org/beta/rustc/platform-support/loongarch-none.html
+// https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html
+// loongarch64: Rust supports only LP64D and LP64S
 #[repr(C)]
 #[derive(Clone, Default)]
 pub struct Context {
@@ -20,14 +24,14 @@ impl fmt::Debug for Context {
         for i in 0..=31 {
             fmt.field(
                 LoongArch::register_name(Register(i as _)).unwrap(),
-                &format_args!("{:#x}", self.gp[i]),
+                &self.gp[i],
             );
         }
         #[cfg(target_feature = "d")]
         for i in 0..=31 {
             fmt.field(
                 LoongArch::register_name(Register((i + 32) as _)).unwrap(),
-                &format_args!("{:#x}", self.fp[i]),
+                &self.fp[i],
             );
         }
         fmt.finish()
@@ -58,55 +62,27 @@ impl ops::IndexMut<gimli::Register> for Context {
     }
 }
 
-macro_rules! save_regs {
-    (gp$(, $fp:ident)?) => {
-        core::arch::naked_asm!(
-            maybe_cfi!(".cfi_startproc"),
-            "
-            move $t0, $sp
-            addi.d $sp, $sp, -0x210
-            ",
-            maybe_cfi!(".cfi_def_cfa_offset 0x210"),
-            "
-            st.d $ra, $sp, 0x200
-            ",
-            maybe_cfi!(".cfi_offset 1, -16"), // ra
-            "
-            st.d $zero, $sp, 0x0
-            st.d $ra, $sp, 0x8
-            st.d $tp, $sp, 0x10
-            st.d $t0, $sp, 0x18
-            st.d $r21, $sp, 0xa8 // reserved
-            st.d $fp, $sp, 0xb0
-            st.d $s0, $sp, 0xb8
-            st.d $s1, $sp, 0xc0
-            st.d $s2, $sp, 0xc8
-            st.d $s3, $sp, 0xd0
-            st.d $s4, $sp, 0xd8
-            st.d $s5, $sp, 0xe0
-            st.d $s6, $sp, 0xe8
-            st.d $s7, $sp, 0xf0
-            st.d $s8, $sp, 0xf8
-            ",
-            save_regs!(maybe_save_fp($($fp)?)),
-            "
-            move $t0, $a0
-            move $a0, $sp
-
-            jirl $ra, $t0, 0
-
-            ld.d $ra, $sp, 0x200
-            addi.d $sp, $sp, 0x210
-            ",
-            maybe_cfi!(".cfi_def_cfa_offset 0"),
-            maybe_cfi!(".cfi_restore 1"), // ra
-            "
-            ret
-            ",
-            maybe_cfi!(".cfi_endproc"),
-        )
+macro_rules! code {
+    (save_gp) => {
+        "
+        st.d $zero, $sp, 0x0
+        st.d $ra, $sp, 0x8
+        st.d $tp, $sp, 0x10
+        st.d $t0, $sp, 0x18
+        st.d $r21, $sp, 0xa8 // reserved
+        st.d $fp, $sp, 0xb0
+        st.d $s0, $sp, 0xb8
+        st.d $s1, $sp, 0xc0
+        st.d $s2, $sp, 0xc8
+        st.d $s3, $sp, 0xd0
+        st.d $s4, $sp, 0xd8
+        st.d $s5, $sp, 0xe0
+        st.d $s6, $sp, 0xe8
+        st.d $s7, $sp, 0xf0
+        st.d $s8, $sp, 0xf8
+        "
     };
-    (maybe_save_fp(fp)) => {
+    (save_fp) => {
         "
         fst.d $fs0, $sp, 0x1c0
         fst.d $fs1, $sp, 0x1c8
@@ -118,56 +94,41 @@ macro_rules! save_regs {
         fst.d $fs7, $sp, 0x1f8
         "
     };
-    (maybe_save_fp()) => {
-        ""
+    (restore_gp) => {
+        "
+        ld.d $ra, $a0, 0x8
+        ld.d $tp, $a0, 0x10
+        ld.d $sp, $a0, 0x18
+        ld.d $a1, $a0, 0x28
+        ld.d $a2, $a0, 0x30
+        ld.d $a3, $a0, 0x38
+        ld.d $a4, $a0, 0x40
+        ld.d $a5, $a0, 0x48
+        ld.d $a6, $a0, 0x50
+        ld.d $a7, $a0, 0x58
+        ld.d $t0, $a0, 0x60
+        ld.d $t1, $a0, 0x68
+        ld.d $t2, $a0, 0x70
+        ld.d $t3, $a0, 0x78
+        ld.d $t4, $a0, 0x80
+        ld.d $t5, $a0, 0x88
+        ld.d $t6, $a0, 0x90
+        ld.d $t7, $a0, 0x98
+        ld.d $t8, $a0, 0xa0
+        ld.d $r21, $a0, 0xa8 // reserved
+        ld.d $fp, $a0, 0xb0
+        ld.d $s0, $a0, 0xb8
+        ld.d $s1, $a0, 0xc0
+        ld.d $s2, $a0, 0xc8
+        ld.d $s3, $a0, 0xd0
+        ld.d $s4, $a0, 0xd8
+        ld.d $s5, $a0, 0xe0
+        ld.d $s6, $a0, 0xe8
+        ld.d $s7, $a0, 0xf0
+        ld.d $s8, $a0, 0xf8
+        "
     };
-}
-
-macro_rules! restore_regs {
-    ($ctx:expr, gp$(, $fp:ident)?) => {
-        core::arch::asm!(
-            restore_regs!(maybe_restore_fp($($fp)?)),
-            "
-            ld.d $ra, $a0, 0x8
-            ld.d $tp, $a0, 0x10
-            ld.d $sp, $a0, 0x18
-            ld.d $a1, $a0, 0x28
-            ld.d $a2, $a0, 0x30
-            ld.d $a3, $a0, 0x38
-            ld.d $a4, $a0, 0x40
-            ld.d $a5, $a0, 0x48
-            ld.d $a6, $a0, 0x50
-            ld.d $a7, $a0, 0x58
-            ld.d $t0, $a0, 0x60
-            ld.d $t1, $a0, 0x68
-            ld.d $t2, $a0, 0x70
-            ld.d $t3, $a0, 0x78
-            ld.d $t4, $a0, 0x80
-            ld.d $t5, $a0, 0x88
-            ld.d $t6, $a0, 0x90
-            ld.d $t7, $a0, 0x98
-            ld.d $t8, $a0, 0xa0
-            ld.d $r21, $a0, 0xa8 // reserved
-            ld.d $fp, $a0, 0xb0
-            ld.d $s0, $a0, 0xb8
-            ld.d $s1, $a0, 0xc0
-            ld.d $s2, $a0, 0xc8
-            ld.d $s3, $a0, 0xd0
-            ld.d $s4, $a0, 0xd8
-            ld.d $s5, $a0, 0xe0
-            ld.d $s6, $a0, 0xe8
-            ld.d $s7, $a0, 0xf0
-            ld.d $s8, $a0, 0xf8
-            ",
-            "
-            ld.d $a0, $a0, 0x20
-            ret
-            ",
-            in("$a0") $ctx,
-            options(noreturn)
-        )
-    };
-    (maybe_restore_fp(fp)) => {
+    (restore_fp) => {
         "
         fld.d $fa0, $a0, 0x100
         fld.d $fa1, $a0, 0x108
@@ -203,27 +164,87 @@ macro_rules! restore_regs {
         fld.d $fs7, $a0, 0x1f8
         "
     };
-    (maybe_restore_fp()) => {
-        ""
-    };
 }
 
 #[unsafe(naked)]
 pub extern "C-unwind" fn save_context(f: extern "C" fn(&mut Context, *mut ()), ptr: *mut ()) {
-    #[allow(unused_unsafe)]
-    unsafe {
-        #[cfg(target_feature = "d")]
-        save_regs!(gp, fp);
-        #[cfg(not(target_feature = "d"))]
-        save_regs!(gp);
-    }
+    #[cfg(target_feature = "d")]
+    core::arch::naked_asm!(
+        maybe_cfi!(".cfi_startproc"),
+        "
+        move $t0, $sp
+        addi.d $sp, $sp, -0x210
+        ",
+        maybe_cfi!(".cfi_def_cfa_offset 0x210"),
+        "
+        st.d $ra, $sp, 0x200
+        ",
+        maybe_cfi!(".cfi_offset ra, -16"),
+        code!(save_gp),
+        code!(save_fp),
+        "
+        move $t0, $a0
+        move $a0, $sp
+        jirl $ra, $t0, 0
+        ld.d $ra, $sp, 0x200
+        addi.d $sp, $sp, 0x210
+        ",
+        maybe_cfi!(".cfi_def_cfa_offset 0"),
+        maybe_cfi!(".cfi_restore ra"),
+        "ret",
+        maybe_cfi!(".cfi_endproc"),
+    );
+    #[cfg(not(target_feature = "d"))]
+    core::arch::naked_asm!(
+        maybe_cfi!(".cfi_startproc"),
+        "
+        move $t0, $sp
+        addi.d $sp, $sp, -0x110
+        ",
+        maybe_cfi!(".cfi_def_cfa_offset 0x110"),
+        "
+        st.d $ra, $sp, 0x100
+        ",
+        maybe_cfi!(".cfi_offset ra, -16"),
+        code!(save_gp),
+        "
+        move $t0, $a0
+        move $a0, $sp
+        jirl $ra, $t0, 0
+        ld.d $ra, $sp, 0x100
+        addi.d $sp, $sp, 0x110
+        ",
+        maybe_cfi!(".cfi_def_cfa_offset 0"),
+        maybe_cfi!(".cfi_restore ra"),
+        "ret",
+        maybe_cfi!(".cfi_endproc"),
+    );
 }
 
 pub unsafe fn restore_context(ctx: &Context) -> ! {
+    #[cfg(target_feature = "d")]
     unsafe {
-        #[cfg(target_feature = "d")]
-        restore_regs!(ctx, gp, fp);
-        #[cfg(not(target_feature = "d"))]
-        restore_regs!(ctx, gp);
+        core::arch::asm!(
+            code!(restore_fp),
+            code!(restore_gp),
+            "
+            ld.d $a0, $a0, 0x20
+            ret
+            ",
+            in("$a0") ctx,
+            options(noreturn)
+        );
+    }
+    #[cfg(not(target_feature = "d"))]
+    unsafe {
+        core::arch::asm!(
+            code!(restore_gp),
+            "
+            ld.d $a0, $a0, 0x20
+            ret
+            ",
+            in("$a0") ctx,
+            options(noreturn)
+        );
     }
 }

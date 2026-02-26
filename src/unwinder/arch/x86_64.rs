@@ -1,5 +1,4 @@
 use core::fmt;
-use core::ops;
 use gimli::{Register, X86_64};
 
 use super::maybe_cfi;
@@ -51,20 +50,6 @@ impl Context {
             X86_64::FCW => Some(&mut self.fcw),
             _ => None,
         }
-    }
-}
-
-impl ops::Index<Register> for Context {
-    type Output = usize;
-
-    fn index(&self, reg: Register) -> &usize {
-        self.get(reg).unwrap()
-    }
-}
-
-impl ops::IndexMut<gimli::Register> for Context {
-    fn index_mut(&mut self, reg: Register) -> &mut usize {
-        self.get_mut(reg).unwrap()
     }
 }
 

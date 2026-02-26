@@ -428,3 +428,17 @@ pub extern "C-unwind" fn _Unwind_Backtrace(
         }
     })
 }
+
+impl core::ops::Index<Register> for Context {
+    type Output = usize;
+
+    fn index(&self, reg: Register) -> &usize {
+        self.get(reg).unwrap()
+    }
+}
+
+impl core::ops::IndexMut<gimli::Register> for Context {
+    fn index_mut(&mut self, reg: Register) -> &mut usize {
+        self.get_mut(reg).unwrap()
+    }
+}

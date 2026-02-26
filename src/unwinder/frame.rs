@@ -169,7 +169,10 @@ impl Frame {
                 RegisterRule::Constant(value) => value as usize,
                 _ => unreachable!(),
             };
-            new_ctx[*reg] = value;
+            let Some(reg) = new_ctx.get_mut(*reg) else {
+                return Err(());
+            };
+            *reg = value;
         }
 
         Ok(new_ctx)

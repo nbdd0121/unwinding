@@ -32,29 +32,39 @@ impl fmt::Debug for Context {
     }
 }
 
+impl Context {
+    pub fn get(&self, reg: Register) -> Option<&usize> {
+        match reg {
+            Register(0..=15) => Some(&self.registers[reg.0 as usize]),
+            X86_64::RA => Some(&self.ra),
+            X86_64::MXCSR => Some(&self.mcxsr),
+            X86_64::FCW => Some(&self.fcw),
+            _ => None,
+        }
+    }
+
+    pub fn get_mut(&mut self, reg: Register) -> Option<&mut usize> {
+        match reg {
+            Register(0..=15) => Some(&mut self.registers[reg.0 as usize]),
+            X86_64::RA => Some(&mut self.ra),
+            X86_64::MXCSR => Some(&mut self.mcxsr),
+            X86_64::FCW => Some(&mut self.fcw),
+            _ => None,
+        }
+    }
+}
+
 impl ops::Index<Register> for Context {
     type Output = usize;
 
     fn index(&self, reg: Register) -> &usize {
-        match reg {
-            Register(0..=15) => &self.registers[reg.0 as usize],
-            X86_64::RA => &self.ra,
-            X86_64::MXCSR => &self.mcxsr,
-            X86_64::FCW => &self.fcw,
-            _ => unimplemented!(),
-        }
+        self.get(reg).unwrap()
     }
 }
 
 impl ops::IndexMut<gimli::Register> for Context {
     fn index_mut(&mut self, reg: Register) -> &mut usize {
-        match reg {
-            Register(0..=15) => &mut self.registers[reg.0 as usize],
-            X86_64::RA => &mut self.ra,
-            X86_64::MXCSR => &mut self.mcxsr,
-            X86_64::FCW => &mut self.fcw,
-            _ => unimplemented!(),
-        }
+        self.get_mut(reg).unwrap()
     }
 }
 

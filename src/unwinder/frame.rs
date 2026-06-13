@@ -145,7 +145,6 @@ impl Frame {
         new_ctx[Arch::SP] = cfa as _;
         new_ctx[Arch::RA] = 0;
 
-        #[warn(non_exhaustive_omitted_patterns)]
         for (reg, rule) in row.registers() {
             let value = match *rule {
                 // For most registers, `Undefined` indicates the value does not need to
@@ -165,7 +164,6 @@ impl Frame {
                 RegisterRule::ValExpression(expr) => self.evaluate_expression(ctx, expr)?,
                 RegisterRule::Architectural => unreachable!(),
                 RegisterRule::Constant(value) => value as usize,
-                _ => unreachable!(),
             };
             new_ctx[*reg] = value;
         }

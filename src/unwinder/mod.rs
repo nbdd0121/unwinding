@@ -286,7 +286,7 @@ fn force_unwind_phase2(
             stop(
                 1,
                 UnwindAction::FORCE_UNWIND
-                    | UnwindAction::END_OF_STACK
+                    | UnwindAction::CLEANUP_PHASE
                     | if frame.is_none() {
                         UnwindAction::END_OF_STACK
                     } else {

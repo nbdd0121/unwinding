@@ -9,6 +9,7 @@ fn main() {
         "catch_std_exception",
         "std_catch_exception",
         "panic_abort_no_debuginfo",
+        "forced_unwind",
     ];
 
     for test in tests {

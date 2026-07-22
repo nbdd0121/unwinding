@@ -1,6 +1,4 @@
 #![doc = include_str!("../README.md")]
-// We use `non_exhaustive_omitted_patterns_lint` which is a nightly lint.
-#![allow(unknown_lints)]
 #![cfg_attr(
     any(
         feature = "personality",

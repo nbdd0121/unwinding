@@ -31,8 +31,6 @@ jobs:
 
     - name: Build library
       run: cargo build --release $BUILD_STD
-      env:
-        RUSTFLAGS: -Zcrate-attr=feature(non_exhaustive_omitted_patterns_lint)
 
     - name: Run tests
       run: cargo test --release $BUILD_STD

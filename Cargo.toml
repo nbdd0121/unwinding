@@ -15,6 +15,7 @@ members = [
     "test_crates/catch_std_exception",
     "test_crates/std_catch_exception",
     "test_crates/panic_abort_no_debuginfo",
+    "test_crates/forced_unwind",
 ]
 
 [dependencies]

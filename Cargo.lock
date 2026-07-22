@@ -11,6 +11,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "forced_unwind"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "unwinding",
+]
+
+[[package]]
 name = "gimli"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

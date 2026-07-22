@@ -47,6 +47,9 @@ fn parse_encoded_pointer(
         constants::DW_EH_PE_datarel => _Unwind_GetDataRelBase(unwind_ctx) as u64,
         constants::DW_EH_PE_funcrel => _Unwind_GetRegionStart(unwind_ctx) as u64,
         constants::DW_EH_PE_aligned => {
+            // DW_EH_PE_aligned means the same as DW_EH_PE_absptr, but that the address is naturally
+            // aligned.  In reality it's not being emitted (and libunwind doesn't support it) but
+            // it's not tricky to implement so do it anyway.
             let ptr = input.slice().as_ptr() as usize;
             input.skip(ptr.next_multiple_of(size_of::<usize>()) - ptr)?;
             0

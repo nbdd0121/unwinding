@@ -87,7 +87,7 @@ fn foo() {
         Box::into_raw(Box::new(MaybeUninit::<UnwindException>::zeroed())).cast();
     unsafe {
         // Made-up class so the exception stays foreign and nothing reads into it.
-        (*exception).exception_class = u64::from_ne_bytes(*b"TSTFRCEU");
+        (*exception).exception_class = u64::from_ne_bytes(*b"TESTRUST");
         (*exception).exception_cleanup = Some(exception_cleanup);
     }
     EXCEPTION.store(exception, Ordering::Relaxed);

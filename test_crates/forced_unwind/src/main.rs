@@ -28,12 +28,12 @@ struct RecordOnDrop;
 
 impl Drop for RecordOnDrop {
     fn drop(&mut self) {
-        DROPPED.store(true, Ordering::SeqCst);
+        DROPPED.store(true, Ordering::Relaxed);
     }
 }
 
 unsafe extern "C" fn exception_cleanup(_code: UnwindReasonCode, _exception: *mut UnwindException) {
-    EXCEPTION_FREED.store(true, Ordering::SeqCst);
+    EXCEPTION_FREED.store(true, Ordering::Relaxed);
 }
 
 unsafe extern "C" fn stop_fn(
@@ -46,12 +46,12 @@ unsafe extern "C" fn stop_fn(
 ) -> UnwindReasonCode {
     assert_eq!(version, 1);
     assert_eq!(
-        arg, &STOP_ARG as *const u8 as *mut c_void,
+        arg, &raw const STOP_ARG as *mut c_void,
         "stop argument not passed through"
     );
     assert_eq!(
         exception,
-        EXCEPTION.load(Ordering::SeqCst),
+        EXCEPTION.load(Ordering::Relaxed),
         "exception object not passed through"
     );
     assert!(
@@ -66,12 +66,12 @@ unsafe extern "C" fn stop_fn(
     if actions.contains(UnwindAction::END_OF_STACK) {
         // Unwinder is at end of stack, so `_d` should have been cleaned up.
         assert!(
-            DROPPED.load(Ordering::SeqCst),
+            DROPPED.load(Ordering::Relaxed),
             "reached end of stack but the cleanup never ran"
         );
         // Unwinder must not have freed our exception.
         assert!(
-            !EXCEPTION_FREED.load(Ordering::SeqCst),
+            !EXCEPTION_FREED.load(Ordering::Relaxed),
             "unwinder called the exception cleanup routine during forced unwind"
         );
         eprintln!("forced unwind reached end of stack with cleanups run");
@@ -84,14 +84,15 @@ unsafe extern "C" fn stop_fn(
 fn foo() {
     // Leak the box so it outlives `foo()`.
     let exception: *mut UnwindException =
-        Box::leak(Box::new(MaybeUninit::<UnwindException>::zeroed())).as_mut_ptr();
+        Box::into_raw(Box::new(MaybeUninit::<UnwindException>::zeroed())).cast();
     unsafe {
+        // Made-up class so the exception stays foreign and nothing reads into it.
         (*exception).exception_class = u64::from_ne_bytes(*b"TSTFRCEU");
         (*exception).exception_cleanup = Some(exception_cleanup);
     }
-    EXCEPTION.store(exception, Ordering::SeqCst);
+    EXCEPTION.store(exception, Ordering::Relaxed);
 
-    let arg = &STOP_ARG as *const u8 as *mut c_void;
+    let arg = &raw const STOP_ARG as *mut c_void;
     let code = unsafe { _Unwind_ForcedUnwind(exception, stop_fn, arg) };
 
     // The stop function exits at end of stack, so reaching here means the test failed.

@@ -123,6 +123,10 @@ pub extern "C" fn _Unwind_GetDataRelBase(unwind_ctx: &UnwindContext<'_>) -> usiz
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void {
+    if pc.is_null() {
+        return ptr::null_mut();
+    }
+
     find_fde::get_finder()
         .find_fde(pc as usize - 1)
         .map(|r| r.fde.initial_address() as usize as _)

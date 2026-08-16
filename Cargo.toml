@@ -11,11 +11,7 @@ rust-version = "1.88"
 [workspace]
 members = [
     "cdylib",
-    "test_crates/throw_and_catch",
-    "test_crates/catch_std_exception",
-    "test_crates/std_catch_exception",
-    "test_crates/panic_abort_no_debuginfo",
-    "test_crates/forced_unwind",
+    "test_crates/*",
 ]
 
 [dependencies]

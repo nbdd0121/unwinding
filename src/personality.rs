@@ -14,9 +14,20 @@ use crate::util::*;
 #[derive(Debug)]
 enum EHAction {
     None,
+    /// Destructors should be executed when stack unwinds.
     Cleanup(usize),
+    /// Stack unwind should be stopped as the exception is going to be caught by `catch_unwind`.
     Catch(usize),
+    /// Stack unwind should be stopped for termination (`UnwindAction::Terminate`).
+    ///
+    /// Note that due to inlining the landing pad can execute destructors before terminating. So
+    /// this is different from `Terminate`.
+    ///
+    /// Handling of this is mostly identical to `Catch`; except that Rust frames that have no
+    /// destructors but only `UnwindAction::Terminate` is considered as plain-old-frame (POF) and
+    /// forced unwind is allowed to unwind past it; so this is treated as `None` during forced unwind.
     Filter(usize),
+    /// Process should be terminated as the call site does not permit unwinding.
     Terminate,
 }
 
@@ -140,7 +151,18 @@ fn find_eh_action(
 
                 action_table.skip((cs_action - 1) as _)?;
                 let ttype_index = action_table.read_sleb128()?;
-                return Ok(if ttype_index == 0 {
+                let next_action = action_table.read_sleb128()?;
+                return Ok(if next_action != 0 {
+                    // We observed multiple actions. As Rust does not have exception specification, this
+                    // indicates that we have at least 2 of "cleanup", "catch" and "filter", so we should
+                    // catch all exceptions.
+                    //
+                    // Note that even for the case of "cleanup" + "filter", decoding them as "catch" is
+                    // fine: "filter" behaves identically to "catch" except for forced unwind; in case of
+                    // forced unwind, hitting a "cleanup" landing pad is UB as it indicates that we're
+                    // unwinding past a non-POF Rust frame.
+                    EHAction::Catch(lpad)
+                } else if ttype_index == 0 {
                     EHAction::Cleanup(lpad)
                 } else if ttype_index > 0 {
                     EHAction::Catch(lpad)

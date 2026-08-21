@@ -1,5 +1,4 @@
 use core::fmt;
-use core::ops;
 use gimli::{Register, X86};
 
 use super::maybe_cfi;
@@ -32,26 +31,22 @@ impl fmt::Debug for Context {
     }
 }
 
-impl ops::Index<Register> for Context {
-    type Output = usize;
-
-    fn index(&self, reg: Register) -> &usize {
+impl Context {
+    pub fn get(&self, reg: Register) -> Option<&usize> {
         match reg {
-            Register(0..=7) => &self.registers[reg.0 as usize],
-            X86::RA => &self.ra,
-            X86::MXCSR => &self.mcxsr,
-            _ => unimplemented!(),
+            Register(0..=7) => Some(&self.registers[reg.0 as usize]),
+            X86::RA => Some(&self.ra),
+            X86::MXCSR => Some(&self.mcxsr),
+            _ => None,
         }
     }
-}
 
-impl ops::IndexMut<gimli::Register> for Context {
-    fn index_mut(&mut self, reg: Register) -> &mut usize {
+    pub fn get_mut(&mut self, reg: Register) -> Option<&mut usize> {
         match reg {
-            Register(0..=7) => &mut self.registers[reg.0 as usize],
-            X86::RA => &mut self.ra,
-            X86::MXCSR => &mut self.mcxsr,
-            _ => unimplemented!(),
+            Register(0..=7) => Some(&mut self.registers[reg.0 as usize]),
+            X86::RA => Some(&mut self.ra),
+            X86::MXCSR => Some(&mut self.mcxsr),
+            _ => None,
         }
     }
 }

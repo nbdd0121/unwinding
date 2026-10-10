@@ -37,5 +37,5 @@ pub fn abort() -> ! {
     not(feature = "libc")
 ))]
 pub fn abort() -> ! {
-    core::intrinsics::abort();
+    core::intrinsics::abort_immediate();
 }

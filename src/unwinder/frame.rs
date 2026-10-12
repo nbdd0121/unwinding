@@ -131,7 +131,7 @@ impl Frame {
         ctx[Arch::SP] = ctx[Arch::SP].wrapping_add(size as usize);
     }
 
-    pub fn unwind(&self, ctx: &Context) -> Result<Context, gimli::Error> {
+    pub fn unwind(&self, ctx: &Context) -> Result<Context, ()> {
         let row = &self.row;
         let mut new_ctx = ctx.clone();
 
@@ -139,7 +139,7 @@ impl Frame {
             CfaRule::RegisterAndOffset { register, offset } => {
                 ctx[register].wrapping_add(offset as usize)
             }
-            CfaRule::Expression(expr) => self.evaluate_expression(ctx, expr)?,
+            CfaRule::Expression(expr) => self.evaluate_expression(ctx, expr).map_err(drop)?,
         };
 
         new_ctx[Arch::SP] = cfa as _;
@@ -158,14 +158,19 @@ impl Frame {
                 RegisterRule::ValOffset(offset) => cfa.wrapping_add(offset as usize),
                 RegisterRule::Register(r) => ctx[r],
                 RegisterRule::Expression(expr) => {
-                    let addr = self.evaluate_expression(ctx, expr)?;
+                    let addr = self.evaluate_expression(ctx, expr).map_err(drop)?;
                     unsafe { *(addr as *const usize) }
                 }
-                RegisterRule::ValExpression(expr) => self.evaluate_expression(ctx, expr)?,
+                RegisterRule::ValExpression(expr) => {
+                    self.evaluate_expression(ctx, expr).map_err(drop)?
+                }
                 RegisterRule::Architectural => unreachable!(),
                 RegisterRule::Constant(value) => value as usize,
             };
-            new_ctx[*reg] = value;
+            let Some(reg) = new_ctx.get_mut(*reg) else {
+                return Err(());
+            };
+            *reg = value;
         }
 
         Ok(new_ctx)

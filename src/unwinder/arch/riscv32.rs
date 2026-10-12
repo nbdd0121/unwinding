@@ -1,5 +1,4 @@
 use core::fmt;
-use core::ops;
 use gimli::{Register, RiscV};
 
 use super::maybe_cfi;
@@ -40,26 +39,22 @@ impl fmt::Debug for Context {
     }
 }
 
-impl ops::Index<Register> for Context {
-    type Output = usize;
-
-    fn index(&self, reg: Register) -> &usize {
+impl Context {
+    pub fn get(&self, reg: Register) -> Option<&usize> {
         match reg {
-            Register(0..=31) => &self.gp[reg.0 as usize],
+            Register(0..=31) => Some(&self.gp[reg.0 as usize]),
             // We cannot support indexing fp here. It is 64-bit if D extension is implemented,
             // and 32-bit if only F extension is implemented.
-            _ => unimplemented!(),
+            _ => None,
         }
     }
-}
 
-impl ops::IndexMut<gimli::Register> for Context {
-    fn index_mut(&mut self, reg: Register) -> &mut usize {
+    pub fn get_mut(&mut self, reg: Register) -> Option<&mut usize> {
         match reg {
-            Register(0..=31) => &mut self.gp[reg.0 as usize],
+            Register(0..=31) => Some(&mut self.gp[reg.0 as usize]),
             // We cannot support indexing fp here. It is 64-bit if D extension is implemented,
             // and 32-bit if only F extension is implemented.
-            _ => unimplemented!(),
+            _ => None,
         }
     }
 }

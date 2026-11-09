@@ -1,5 +1,4 @@
 use core::fmt;
-use core::ops;
 use gimli::{AArch64, Register};
 
 use super::maybe_cfi;
@@ -35,26 +34,22 @@ impl fmt::Debug for Context {
     }
 }
 
-impl ops::Index<Register> for Context {
-    type Output = usize;
-
-    fn index(&self, reg: Register) -> &usize {
+impl Context {
+    pub fn get(&self, reg: Register) -> Option<&usize> {
         match reg {
-            Register(0..=30) => &self.gp[reg.0 as usize],
-            AArch64::SP => &self.sp,
-            Register(64..=95) => &self.fp[(reg.0 - 64) as usize],
-            _ => unimplemented!(),
+            Register(0..=30) => Some(&self.gp[reg.0 as usize]),
+            AArch64::SP => Some(&self.sp),
+            Register(64..=95) => Some(&self.fp[(reg.0 - 64) as usize]),
+            _ => None,
         }
     }
-}
 
-impl ops::IndexMut<gimli::Register> for Context {
-    fn index_mut(&mut self, reg: Register) -> &mut usize {
+    pub fn get_mut(&mut self, reg: Register) -> Option<&mut usize> {
         match reg {
-            Register(0..=30) => &mut self.gp[reg.0 as usize],
-            AArch64::SP => &mut self.sp,
-            Register(64..=95) => &mut self.fp[(reg.0 - 64) as usize],
-            _ => unimplemented!(),
+            Register(0..=30) => Some(&mut self.gp[reg.0 as usize]),
+            AArch64::SP => Some(&mut self.sp),
+            Register(64..=95) => Some(&mut self.fp[(reg.0 - 64) as usize]),
+            _ => None,
         }
     }
 }
